@@ -1,0 +1,13 @@
+n_epochs = 5
+lr = 0.01
+n_folds = 5
+lstm_input_size = 32
+hidden_state_size = 256
+n_layers = 2
+dropout = 0.125
+bidirectional = True
+batch_size = 64
+num_sequence_layers = 2
+output_dim = 2  # !!!!!!!!!!!!!!!!!!!!!!!!
+num_time_steps = 30  # !!!!!!!!!!!!!!
+rnn_type = 'LSTM'
