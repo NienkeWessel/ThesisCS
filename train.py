@@ -126,7 +126,6 @@ def train_kfold(net, words_train, y_train, epochs=100, lr=0.01, device=d2l.try_g
     local_val_score = 0
     models = {}
 
-    y_train = torch.transpose(y_train, 0, 1)
     nr_classes = 2
 
     # print(len(words_train))
@@ -162,7 +161,6 @@ def train_onesplit(net, words, y, train_size=0.8, epochs=100, lr=0.01, device=d2
     charset -- encoding charset to be used (default old charset) New charset does not work properly yet
     """
     words = np.array(words).flatten()
-    y = torch.transpose(y, 0, 1)
     train_input, val_input, train_target, val_target = train_test_split(words, y, train_size=train_size)
     train(net, train_input, train_target, val_input, val_target, epochs=epochs, lr=lr, device=device, charset=charset)
 
