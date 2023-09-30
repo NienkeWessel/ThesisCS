@@ -1,0 +1,8 @@
+torch
+numpy
+scikit-learn
+gym==0.21.0
+d2l
+torchvision
+tqdm
+docopt
