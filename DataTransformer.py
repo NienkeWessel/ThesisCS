@@ -3,6 +3,8 @@ import numpy as np
 import torch.nn.functional
 from Levenshtein import distance as lev
 from sklearn.feature_extraction.text import CountVectorizer
+from transformers import RobertaTokenizerFast
+
 
 
 class DataTransformer(ABC):
@@ -113,5 +115,14 @@ class PytorchDataTransformer(DataTransformer):
 class PassGPT10Transformer(DataTransformer):
     def __init__(self, words, labels) -> None:
         self.y = (torch.nn.functional.one_hot(torch.as_tensor(labels).to(torch.int64), num_classes=2)).to(float)
+        #torch.transpose(torch.as_tensor(labels).to(torch.int64))
 
-        self.X = None
+        tokenizer = RobertaTokenizerFast.from_pretrained("javirandor/passgpt-10characters",
+                                                 max_len=12, padding="max_length",
+                                                 truncation=True, do_lower_case=False,
+                                                 strip_accents=False, mask_token="<mask>",
+                                                 unk_token="<unk>", pad_token="<pad>",
+                                                 truncation_side="right", is_split_into_words=True)
+        
+
+        self.X = tokenizer(words, truncation = True, padding = True, max_length=12)
