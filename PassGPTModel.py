@@ -13,6 +13,13 @@ class GPTModel(MLModel):
     def predict(self, X):
         self.model.forward(X)
 
+    def calc_accuracy(self, y, pred):
+        pass
+
 class PassGPT10Model(GPTModel):
-    def __init__(self) -> None:
-        self.model = GPT2LMHeadModel.from_pretrained("javirandor/passgpt-10characters").eval()
+    def __init__(self, internet=True) -> None:
+        if internet:
+            model_loc = "javirandor/passgpt-10characters"
+        else:
+            model_loc = "passgpt-10characters"
+        self.model = GPT2LMHeadModel.from_pretrained(model_loc).eval()

@@ -14,3 +14,7 @@ class MLModel(ABC):
 
     #@abstractmethod
     #def 
+    
+    @abstractmethod
+    def calc_accuracy(self, y, pred):
+        pass

@@ -1,4 +1,6 @@
 from abc import ABC, abstractmethod
+from sklearn.metrics import accuracy_score
+
 from sklearn import tree
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.naive_bayes import GaussianNB
@@ -15,6 +17,9 @@ class FeatureModel(MLModel):
 
     def predict(self, X):
         return self.model.predict(X)
+
+    def calc_accuracy(self, y, pred):
+        return accuracy_score(y, pred)
 
 
 
