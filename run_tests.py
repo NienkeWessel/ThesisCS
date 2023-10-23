@@ -64,13 +64,14 @@ def run_test_for_model(model, test_file_name, internet=False):
     print(accuracy)
 
 
-
+    '''
     dummy_dataset = create_dummy_dataset()
     dummy_data = transform_data(model, dummy_dataset, dataset['comparison_pw'], internet=internet)
     predictions = model.predict(dummy_data.X)
     print(predictions)
     accuracy = model.calc_accuracy(dummy_data.y, predictions)
     print(accuracy)
+    '''
 
 
 def print_dataset(dataset, split='train'):
@@ -100,11 +101,11 @@ print_dataset(dataset)
 #from FeatureModel import RandomForest
 #model = RandomForest()
 
-#from PytorchModel import LSTMModel
-#model = LSTMModel()
+from PytorchModel import LSTMModel
+model = LSTMModel()
 
 internet = True
-from PassGPTModel import PassGPT10Model
-model = PassGPT10Model(internet=internet)
+#from PassGPTModel import PassGPT10Model
+#model = PassGPT10Model(internet=internet)
 
-run_test_for_model(model, './datasets/most_common_En1.0_100_split0', internet=internet)
+run_test_for_model(model, './datasets/most_common_En1.0_1000', internet=internet)
