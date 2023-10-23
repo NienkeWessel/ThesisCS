@@ -32,11 +32,9 @@ def train(net, train_input, train_target, val_input, val_target, epochs=100, lr=
     charset -- encoding charset to be used (default old charset) New charset does not work properly yet
     """
 
-    vocab_size = 100
-
     if charset == 'old':
-        train = CharacterDataset(train_input, train_target)
-        valid = CharacterDataset(val_input, val_target)
+        train = CharacterDataset(train_input, y=train_target)
+        valid = CharacterDataset(val_input, y=val_target)
     elif charset == 'new':
         train = CharacterDatasetOneHot(train_input, train_target)
         valid = CharacterDatasetOneHot(val_input, val_target)
@@ -160,7 +158,6 @@ def train_onesplit(net, words, y, train_size=0.8, epochs=100, lr=0.01, device=d2
     device -- CPU or GPU (default tries gpu with d2l)
     charset -- encoding charset to be used (default old charset) New charset does not work properly yet
     """
-    words = np.array(words).flatten()
     train_input, val_input, train_target, val_target = train_test_split(words, y, train_size=train_size)
     train(net, train_input, train_target, val_input, val_target, epochs=epochs, lr=lr, device=device, charset=charset)
 

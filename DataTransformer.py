@@ -110,6 +110,7 @@ class FeatureDataTransformer(DataTransformer):
 class PytorchDataTransformer(DataTransformer):
     def __init__(self, dataset) -> None:
         super().__init__(dataset)
+        self.X = np.array(self.X).flatten()
         self.y = (torch.nn.functional.one_hot(torch.as_tensor(dataset['label']).to(torch.int64), num_classes=2)).to(float)
 
 class PassGPT10Transformer(DataTransformer):
