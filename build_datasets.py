@@ -21,9 +21,13 @@ class CharacterDataset(Dataset):
     vocabulary : list List of all characters
     """
 
-    def __init__(self, texts, y, max_len=32):
+    def __init__(self, texts, y=None, max_len=32):
         self.texts = texts
-        self.y = y
+        if y is None:
+            self.has_y = False
+        else: 
+            self.y = y
+            self.has_y = True
         self.max_len = max_len
         self.vocabulary = string.printable
 
@@ -50,6 +54,8 @@ class CharacterDataset(Dataset):
             X = X[:self.max_len]
         X = nn.ConstantPad1d((0, self.max_len - len(X)), 0)(X)
         
-        y = self.y[ix]
-
-        return X, y
+        if self.has_y:
+            y = self.y[ix]
+            return X, y
+        else: 
+            return X
