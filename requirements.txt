@@ -6,3 +6,5 @@ d2l
 torchvision
 tqdm
 docopt
+skops
+torchmetrics

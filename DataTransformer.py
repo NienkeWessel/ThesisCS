@@ -6,7 +6,6 @@ from sklearn.feature_extraction.text import CountVectorizer
 from transformers import RobertaTokenizerFast
 
 
-
 class DataTransformer(ABC):
     def __init__(self, dataset) -> None:
         """
@@ -43,7 +42,8 @@ class FeatureDataTransformer(DataTransformer):
         if ngrams:
             vectorizer = CountVectorizer(analyzer='char', lowercase=False, ngram_range=ngram_range, min_df=10)
             ngram_features = vectorizer.fit_transform(
-                dataset['text'])  # CountVectorizer returns a sparse matrix. This needs to be converted into a dense matrix in order to be able to concatenate it.
+                dataset[
+                    'text'])  # CountVectorizer returns a sparse matrix. This needs to be converted into a dense matrix in order to be able to concatenate it.
             features = np.concatenate((np.array(features), ngram_features.toarray()), axis=1)  # link features and words
 
         total = np.array(list(zip(dataset['text'], features)))
@@ -111,12 +111,16 @@ class PytorchDataTransformer(DataTransformer):
     def __init__(self, dataset) -> None:
         super().__init__(dataset)
         self.X = np.array(self.X).flatten()
-        self.y = (torch.nn.functional.one_hot(torch.as_tensor(dataset['label']).to(torch.int64), num_classes=2)).to(float)
+        self.y = (torch.nn.functional.one_hot(torch.as_tensor(dataset['label']).to(torch.int64), num_classes=2)).to(
+            float)
+
 
 class PassGPT10Transformer(DataTransformer):
     def __init__(self, dataset, internet=True) -> None:
-        self.y = (torch.nn.functional.one_hot(torch.as_tensor(dataset['label']).to(torch.int64), num_classes=2)).to(float)
-        #torch.transpose(torch.as_tensor(labels).to(torch.int64))
+        super().__init__(dataset)
+        self.y = (torch.nn.functional.one_hot(torch.as_tensor(dataset['label']).to(torch.int64), num_classes=2)).to(
+            float)
+        # torch.transpose(torch.as_tensor(labels).to(torch.int64))
 
         if internet:
             model_loc = "javirandor/passgpt-10characters"
@@ -124,11 +128,10 @@ class PassGPT10Transformer(DataTransformer):
             model_loc = "passgpt-10characters"
 
         tokenizer = RobertaTokenizerFast.from_pretrained(model_loc,
-                                                 max_len=12, padding="max_length",
-                                                 truncation=True, do_lower_case=False,
-                                                 strip_accents=False, mask_token="<mask>",
-                                                 unk_token="<unk>", pad_token="<pad>",
-                                                 truncation_side="right", is_split_into_words=True)
-        
+                                                         max_len=12, padding="max_length",
+                                                         truncation=True, do_lower_case=False,
+                                                         strip_accents=False, mask_token="<mask>",
+                                                         unk_token="<unk>", pad_token="<pad>",
+                                                         truncation_side="right", is_split_into_words=True)
 
-        self.X = tokenizer(dataset['text'], truncation = True, padding = True, max_length=12) #return_tensors='pt'
+        self.X = tokenizer(dataset['text'], truncation=True, padding=True, max_length=12)  # return_tensors='pt'

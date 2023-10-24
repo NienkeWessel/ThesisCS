@@ -13,15 +13,26 @@ def read_words(filename, nr_lines, words=None):
     return words
 
 
-def read_passwords(filename, comp_nr_lines, nr_lines):
+def read_passwords(filename, comp_nr_lines, nr_lines, comp_pw=None):
     passwords = []
     comparison_pw = []
 
     with open(filename, "r") as file:
-        for i in range(comp_nr_lines):
-            comparison_pw.append(next(file).strip())
-        for i in range(nr_lines):
-            passwords.append(next(file).strip())
+
+        if comp_pw is None:
+            for i in range(comp_nr_lines):
+                comparison_pw.append(next(file).strip())
+            i = 0
+            while i < nr_lines:
+                passwords.append(next(file).strip())
+                i += 1
+        else:
+            i = 0
+            while i < nr_lines:
+                pw = next(file).strip()
+                if pw not in comp_pw['text']:
+                    passwords.append(pw)
+                    i += 1
 
     return passwords, comparison_pw
 
@@ -34,9 +45,22 @@ def make_languages_string(languages, lang_split):
     return s
 
 
+def create_comparison_pw_set(filename, comp_nr_lines=10000, save=False):
+    _, comparison_pw = read_passwords(filename, comp_nr_lines, 0)
+    comparison_pw = Dataset.from_dict({
+        'text': comparison_pw,
+        'label': np.ones(len(comparison_pw))
+    })
+
+    if save:
+        comparison_pw.save_to_disk("comparison_pw")
+
+    return comparison_pw
+
+
 def load_data(pw_filename, languages, lang_files, lang_split, comp_nr_lines, nr_lines, save=False, mode='most_common',
-              train_split=0.7, test_val_ratio=0.5, nr_of_sets=3):
-    passwords, comparison_pw = read_passwords(pw_filename, comp_nr_lines, nr_lines)
+              train_split=0.7, test_val_ratio=0.5, nr_of_sets=3, comp_pw=None):
+    passwords, _ = read_passwords(pw_filename, comp_nr_lines, nr_lines, comp_pw)
     words = []
     for language in languages:
         if language in lang_split:
@@ -78,24 +102,13 @@ def load_data(pw_filename, languages, lang_files, lang_split, comp_nr_lines, nr_
                     'text': test_words,
                     'label': test_labels
                 }),
-                'comparison_pw': Dataset.from_dict({
-                    'text': comparison_pw,
-                    'label': np.ones(len(comparison_pw))
-                }),
             })
-            '''
-           'text': passwords + words,
-           'labels': (np.concatenate((np.ones(len(passwords)), np.zeros(len(words))), axis=0)).tolist(),
-           'comp_pw': comparison_pw,
-           '''
 
             save_filename = mode + '_' + make_languages_string(languages, lang_split) + '_' + str(
                 nr_lines) + "_split" + str(n)
-            # with open(save_filename, 'w') as f:
-            #    json.dump(data, f)
+
             print(data)
             data.save_to_disk(save_filename)
-    return passwords, words, comparison_pw
 
 
 def load_data_from_file(filename):
@@ -103,6 +116,12 @@ def load_data_from_file(filename):
         return json.load(f)
 
 
+pw_filename = "10-million-password-list-top-1000000.txt"
+comp_nr_lines = 10000
+nr_lines = 100000
+
+#comparison_pw = create_comparison_pw_set(pw_filename, comp_nr_lines=comp_nr_lines, save=True)
+comparison_pw = load_from_disk("comparison_pw")
 
 languages = ['English', 'Spanish', 'Dutch', 'Arabic', 'Chinese']
 lang_files = {
@@ -113,12 +132,11 @@ lang_split = {
     'English': 1.0,
     # 'Spanish': 0.0
 }
-pw_filename = "10-million-password-list-top-1000000.txt"
-comp_nr_lines = 10000
-nr_lines = 1000
 
-load_data(pw_filename, languages, lang_files, lang_split, comp_nr_lines, nr_lines, save=True)
+
+load_data(pw_filename, languages, lang_files, lang_split, 0, nr_lines, save=True, comp_pw=comparison_pw)
 
 s = make_languages_string(languages, lang_split)
 print(s)
+
 
