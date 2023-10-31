@@ -46,7 +46,7 @@ class FeatureDataTransformer(DataTransformer):
                     'text'])  # CountVectorizer returns a sparse matrix. This needs to be converted into a dense matrix in order to be able to concatenate it.
             features = np.concatenate((np.array(features), ngram_features.toarray()), axis=1)  # link features and words
 
-        total = np.array(list(zip(dataset['text'], features)))
+        total = np.array(list(zip(dataset['text'], features)), dtype=object)
 
         self.X = features
         self.y = dataset['label']
