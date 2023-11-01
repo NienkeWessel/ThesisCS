@@ -3,8 +3,9 @@ from datasets import load_from_disk, Dataset
 
 from DataTransformer import FeatureDataTransformer, PytorchDataTransformer, PassGPT10Transformer
 from FeatureModel import FeatureModel
-from PytorchModel import PytorchModel
-from PassGPTModel import HuggingfaceModel
+from PytorchModel import PytorchModel, LSTMModel
+from PassGPTModel import HuggingfaceModel, PassGPT10Model
+from FeatureModel import RandomForest, DecisionTree, GaussianNaiveBayes, MultinomialNaiveBayes
 
 
 def find_files(dir):
@@ -47,13 +48,13 @@ def transform_data(model, dataset, comparison_pw, internet=False):
         return None
 
 
-def run_test_for_model(model, test_file_name, comparison_pw, internet=False, save_filename=None):
+def run_test_for_model(model, params, test_file_name, comparison_pw, internet=False, save_filename=None):
     dataset = load_from_disk(test_file_name)
 
     train_data = transform_data(model, dataset['train'], comparison_pw, internet=internet)
     test_data = transform_data(model, dataset['test'], comparison_pw, internet=internet)
 
-    model.train(train_data.X, train_data.y)
+    model.train(train_data.X, train_data.y, params=params)
 
     if save_filename is not None:
         model.save_model(save_filename)
@@ -63,11 +64,11 @@ def run_test_for_model(model, test_file_name, comparison_pw, internet=False, sav
     accuracy = model.calc_accuracy(test_data.y, predictions)
     print(accuracy)
 
-    #recall = model.calc_recall(test_data.y, predictions)
-    #print(recall)
+    recall = model.calc_recall(test_data.y, predictions)
+    print(recall)
 
-    #precision = model.calc_precision(test_data.y, predictions)
-    #print(precision)
+    precision = model.calc_precision(test_data.y, predictions)
+    print(precision)
 
     f1 = model.calc_f1score(test_data.y, predictions)
     print(f1)
@@ -102,6 +103,15 @@ def print_dataset(dataset, split='train'):
     print(dataset[split]['label'])
 
 
+def run_all_datasets(folder_name, model, params, comparison_pw, saving_folder_name, internet=False):
+    files = find_files(folder_name)
+    for file in files:
+        run_test_for_model(model, params, folder_name + file, comparison_pw, internet=internet, save_filename=saving_folder_name + str(model)+"_"+file)
+    
+
+def create_all_models(internet=False):
+    return [RandomForest(), LSTMModel(), PassGPT10Model(internet=internet), GaussianNaiveBayes(), MultinomialNaiveBayes(), DecisionTree()]
+
 print(find_files('datasets'))
 
 comparison_pw = load_from_disk("comparison_pw")
@@ -118,14 +128,19 @@ comparison_pw = load_from_disk("comparison_pw")
 # print_dataset(dataset)
 
 
-from FeatureModel import RandomForest
-model = RandomForest()
+params = {}
 
-from PytorchModel import LSTMModel
-#model = LSTMModel()
+#model = DecisionTree()
 
-internet = False
-from PassGPTModel import PassGPT10Model
+model = LSTMModel()
+params['epochs'] = 2
+
+internet = True
 #model = PassGPT10Model(internet=internet)
 
-run_test_for_model(model, './datasets/most_common_En1.0_1000_split2', comparison_pw, internet=internet, save_filename="blah")
+#run_test_for_model(model, './datasets/test/most_common_En1.0_1000_split2', comparison_pw, internet=internet, save_filename="./models/blah")
+run_all_datasets("./datasets/test/", model, params, comparison_pw, "./models/", internet=internet)
+
+
+#print_dataset(load_from_disk('./datasets/test/most_common_En1.0_1000_split0'))
+#print_dataset(load_from_disk('./datasets/test/most_common_En1.0_1000_split1'))
