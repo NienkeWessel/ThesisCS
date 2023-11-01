@@ -99,6 +99,9 @@ class PassGPT10Model(HuggingfaceModel):
                                                               is_split_into_words=True)
 
         self.trainer = CustomTrainer(model=self.model, args=self.training_args, tokenizer=self.tokenizer,)
+    
+    def __str__(self) -> str:
+        return "PassGPTModel"
 
     def train(self, X, y):
         X.update({'labels': y})

@@ -94,6 +94,9 @@ class LSTMModel(PytorchModel):
         self.batch_size = 64
         num_sequence_layers = 2
         output_dim = 2  # !!!!!!!!!!!!!!!!!!!!!!!!
-        rnn_type = 'LSTM'
+        self.rnn_type = 'LSTM'
         self.model = BiRNN(lstm_input_size, hidden_state_size, batch_size=self.batch_size, output_dim=output_dim,
-                           num_layers=num_sequence_layers, rnn_type=rnn_type)
+                           num_layers=num_sequence_layers, rnn_type=self.rnn_type)
+    
+    def __str__(self) -> str:
+        return self.rnn_type + "Model"

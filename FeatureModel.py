@@ -16,6 +16,10 @@ class FeatureModel(MLModel):
     def __init__(self) -> None:
         super().__init__()
 
+    @abstractmethod
+    def __str__(self) -> str:
+        pass
+
     def train(self, X, y):
         self.model.fit(X, y)
 
@@ -46,21 +50,33 @@ class RandomForest(FeatureModel):
     def __init__(self) -> None:
         super().__init__()
         self.model = RandomForestClassifier(max_depth=10, random_state=0)
+    
+    def __str__(self) -> str:
+        return "RandomForestModel"
 
 
 class DecisionTree(FeatureModel):
     def __init__(self) -> None:
         super().__init__()
         self.model = tree.DecisionTreeClassifier()
+    
+    def __str__(self) -> str:
+        return "DecisionTreeModel"
 
 
 class GaussianNaiveBayes(FeatureModel):
     def __init__(self) -> None:
         super().__init__()
         self.model = GaussianNB()
+    
+    def __str__(self) -> str:
+        return "GaussianNBModel"
 
 
 class MultinomialNaiveBayes(FeatureModel):
     def __init__(self) -> None:
         super().__init__()
         self.model = MultinomialNB()
+    
+    def __str__(self) -> str:
+        return "MultinomialNBModel"
