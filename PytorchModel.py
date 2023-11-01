@@ -13,8 +13,12 @@ class PytorchModel(MLModel):
         super().__init__()
         self.batch_size = 64
 
-    def train(self, X, y):
-        train_onesplit(self.model, X, y, epochs=1)
+    def train(self, X, y, params={}):
+        if 'epochs' in params:
+            epochs = params['epochs']
+        else:
+            epochs = 1
+        train_onesplit(self.model, X, y, epochs=epochs)
 
     def predict(self, X):
         device = d2l.try_gpu()
@@ -46,17 +50,17 @@ class PytorchModel(MLModel):
     def calc_accuracy(self, y, pred):
         if len(y) != len(pred):
             y = self.cut_of_y_to_batchsize(y)
-        '''
+        
         y_hat = torch.transpose(
             torch.vstack(((pred[:, 0] > pred[:, 1]).unsqueeze(0), (pred[:, 0] <= pred[:, 1]).unsqueeze(0))), 0, 1)
         y_hat = (y_hat >= 0.5).to(y.dtype)
 
         correct = (y_hat == y).to(torch.float32)
-        return torch.mean(correct)
-        '''
+        #return torch.mean(correct)
+        
         pred = self.transform_pred(pred, y)
         accuracy = BinaryAccuracy()
-        return accuracy(pred, y)
+        return torch.mean(correct), accuracy(pred, y)
 
     def calc_recall(self, y, pred):
         if len(y) != len(pred):

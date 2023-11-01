@@ -10,7 +10,7 @@ class MLModel(ABC):
         pass
 
     @abstractmethod
-    def train(self, X, y):
+    def train(self, X, y, params=None):
         pass
 
     @abstractmethod
