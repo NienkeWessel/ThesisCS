@@ -78,11 +78,11 @@ def load_data(pw_filename, languages, lang_files, lang_split, comp_nr_lines, nr_
 
         train_words, test_val_words, train_labels, test_val_labels = train_test_split(all_words, labels,
                                                                                       train_size=train_split,
-                                                                                      random_state=random_state)
+                                                                                      random_state=random_state+n)
 
         test_words, val_words, test_labels, val_labels = train_test_split(test_val_words, test_val_labels,
                                                                           train_size=test_val_ratio,
-                                                                          random_state=random_state)
+                                                                          random_state=random_state+n)
 
         print("Training set size: {}\nTest set size: {}\nValidation set size: {}".format(len(train_words),
                                                                                          len(test_words),
@@ -121,6 +121,7 @@ comp_nr_lines = 10000
 nr_lines = 100000
 
 #comparison_pw = create_comparison_pw_set(pw_filename, comp_nr_lines=comp_nr_lines, save=True)
+
 comparison_pw = load_from_disk("comparison_pw")
 
 languages = ['English', 'Spanish', 'Dutch', 'Arabic', 'Chinese']
@@ -138,5 +139,3 @@ load_data(pw_filename, languages, lang_files, lang_split, 0, nr_lines, save=True
 
 s = make_languages_string(languages, lang_split)
 print(s)
-
-
