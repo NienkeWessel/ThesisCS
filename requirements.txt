@@ -8,3 +8,4 @@ tqdm
 docopt
 skops
 torchmetrics
+accelerate==0.24.1
