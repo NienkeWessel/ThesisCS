@@ -28,9 +28,10 @@ def read_passwords(filename, comp_nr_lines, nr_lines, comp_pw=None):
                 i += 1
         else:
             i = 0
+            comp = set(comp_pw['text'])
             while i < nr_lines:
                 pw = next(file).strip()
-                if pw not in comp_pw['text']:
+                if pw not in comp:
                     passwords.append(pw)
                     i += 1
 
