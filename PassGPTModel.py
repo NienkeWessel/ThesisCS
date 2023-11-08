@@ -6,7 +6,8 @@ from abc import ABC, abstractmethod
 from transformers import TrainingArguments, Trainer
 from transformers import AutoModelForSequenceClassification
 from datasets import Dataset as HuggingfaceDataset
-from datasets import load_metric
+import evaluate
+
 
 
 class CustomTrainer(Trainer):
@@ -21,11 +22,11 @@ class CustomTrainer(Trainer):
 
 
 class HuggingfaceModel(MLModel):
-    def __init__(self) -> None:
-        super().__init__()
+    def __init__(self, params) -> None:
+        super().__init__(params)
         self.trainer = None
 
-    def train(self, X, y):
+    def train(self, X, y, params=None):
         pass
 
     def predict(self, X):
@@ -46,12 +47,15 @@ class HuggingfaceModel(MLModel):
         pass
 
     def calc_f1score(self, y, pred):
-        f1_metric = load_metric("f1")
+        pass
+        '''f1_metric = evaluate.load("f1")
         results = f1_metric.compute(predictions=pred, references=y)
         return results
+        '''
 
     def save_model(self, filename):
-        self.trainer.save_model(filename)
+        #self.trainer.save_model(filename)
+        self.model.save_pretrained(filename)
 
     @abstractmethod
     def load_model(self, filename):
@@ -64,9 +68,12 @@ class HuggingfaceModel(MLModel):
 
 
 class PassGPT10Model(HuggingfaceModel):
-    def __init__(self, internet=True) -> None:
-        self.internet = internet
-        if internet:
+    def __init__(self, params, load_filename=None) -> None:
+        super().__init__(params)
+        self.internet = params['model_params']['internet']
+        if load_filename is not None:
+            model_loc = load_filename
+        elif self.internet:
             model_loc = "javirandor/passgpt-10characters"
         else:
             model_loc = "passgpt-10characters"
@@ -80,7 +87,7 @@ class PassGPT10Model(HuggingfaceModel):
         self.training_args = TrainingArguments(
             output_dir="./model",
             evaluation_strategy="steps",
-            eval_steps=100,
+            eval_steps=0.1, # run evaluation at every 10% of the dataset
             per_device_train_batch_size=4,
             per_device_eval_batch_size=4,
             num_train_epochs=3,
@@ -103,7 +110,7 @@ class PassGPT10Model(HuggingfaceModel):
     def __str__(self) -> str:
         return "PassGPTModel"
 
-    def train(self, X, y):
+    def train(self, X, y, params=None):
         X.update({'labels': y})
         dataset = HuggingfaceDataset.from_dict(X)
 
@@ -120,9 +127,15 @@ class PassGPT10Model(HuggingfaceModel):
         self.trainer.train()
 
     def predict(self, X):
-
         dataset = HuggingfaceDataset.from_dict(X)
         return self.trainer.predict(dataset)
 
     def load_model(self, filename):
         self.model = AutoModelForSequenceClassification.from_pretrained(filename, num_labels=2)
+        self.tokenizer = RobertaTokenizerFast.from_pretrained(filename,
+                                                              max_len=12, padding="max_length",
+                                                              truncation=True, do_lower_case=False,
+                                                              strip_accents=False, mask_token="<mask>",
+                                                              unk_token="<unk>", pad_token="<pad>",
+                                                              truncation_side="right",
+                                                              is_split_into_words=True)

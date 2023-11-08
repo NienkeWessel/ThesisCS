@@ -2,8 +2,9 @@ from abc import ABC, abstractmethod
 
 
 class MLModel(ABC):
-    def __init__(self) -> None:
+    def __init__(self, params) -> None:
         self.model = None
+        self.params = params
 
     @abstractmethod
     def __str__(self) -> str:

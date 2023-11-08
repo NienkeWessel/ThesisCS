@@ -7,7 +7,7 @@ from transformers import RobertaTokenizerFast
 
 
 class DataTransformer(ABC):
-    def __init__(self, dataset) -> None:
+    def __init__(self, dataset, params) -> None:
         """
         Class expects words and labels as a list of strings and a list of numbers respectively
         Transforms the data into the format necessary for the relevant ML algorithm
@@ -17,27 +17,26 @@ class DataTransformer(ABC):
         :param labels: the correct labels as a list of 0s and 1s
         """
         assert (len(dataset['text']) == len(dataset['label']))
+        self.params = params
 
         self.X = dataset['text']
         self.y = dataset['label']
 
 
 class FeatureDataTransformer(DataTransformer):
-    def __init__(self, dataset, comparison_pw) -> None:
+    def __init__(self, dataset, params, comparison_pw) -> None:
         """ - base_features: simple feature set such as
         the length of the word and amount of characters from different character sets - levenshtein: calculate the
         Levenshtein distance to most common passwords - ngrams: ngram of characters as features - ngram_range:
         if ngrams is true, this setting determines which ngrams are to be taken into account
         """
-        super().__init__(dataset)
+        super().__init__(dataset, params)
 
-        levenshtein = False
-        ngrams = False
-        ngram_range = (1, 2)
+        levenshtein = params['levenshtein']
+        ngrams = params['ngrams']
+        ngram_range = params['ngram_range']
 
-        # features = [counts(pw, levenshtein=levenshtein) for pw in passwords]
         features = [self.counts(word, comparison_pw, levenshtein=levenshtein) for word in dataset['text']]
-        # features = np.concatenate((features, features_word), axis=0)
 
         if ngrams:
             vectorizer = CountVectorizer(analyzer='char', lowercase=False, ngram_range=ngram_range, min_df=10)
@@ -46,7 +45,7 @@ class FeatureDataTransformer(DataTransformer):
                     'text'])  # CountVectorizer returns a sparse matrix. This needs to be converted into a dense matrix in order to be able to concatenate it.
             features = np.concatenate((np.array(features), ngram_features.toarray()), axis=1)  # link features and words
 
-        total = np.array(list(zip(dataset['text'], features)), dtype=object)
+        #total = np.array(list(zip(dataset['text'], features)), dtype=object)
 
         self.X = features
         self.y = dataset['label']
@@ -108,21 +107,21 @@ class FeatureDataTransformer(DataTransformer):
 
 
 class PytorchDataTransformer(DataTransformer):
-    def __init__(self, dataset) -> None:
-        super().__init__(dataset)
+    def __init__(self, dataset, params) -> None:
+        super().__init__(dataset, params)
         self.X = np.array(self.X).flatten()
         self.y = (torch.nn.functional.one_hot(torch.as_tensor(dataset['label']).to(torch.int64), num_classes=2)).to(
             float)
 
 
 class PassGPT10Transformer(DataTransformer):
-    def __init__(self, dataset, internet=True) -> None:
-        super().__init__(dataset)
+    def __init__(self, dataset, params) -> None:
+        super().__init__(dataset, params)
         self.y = (torch.nn.functional.one_hot(torch.as_tensor(dataset['label']).to(torch.int64), num_classes=2)).to(
             float)
         # torch.transpose(torch.as_tensor(labels).to(torch.int64))
 
-        if internet:
+        if params['internet']:
             model_loc = "javirandor/passgpt-10characters"
         else:
             model_loc = "passgpt-10characters"

@@ -9,11 +9,15 @@ from d2l import torch as d2l
 
 
 class PytorchModel(MLModel):
-    def __init__(self) -> None:
-        super().__init__()
-        self.batch_size = 64
+    def __init__(self, params) -> None:
+        super().__init__(params)
+        try:
+            self.batch_size = self.params['model_params']['batch_size']
+        except KeyError:
+            raise KeyError("Not all model parameters have been specified as needed, check if batch_size is "
+                           "specified properly")
 
-    def train(self, X, y, params={}):
+    def train(self, X, y, params=None):
         if 'epochs' in params:
             epochs = params['epochs']
         else:
@@ -50,14 +54,14 @@ class PytorchModel(MLModel):
     def calc_accuracy(self, y, pred):
         if len(y) != len(pred):
             y = self.cut_of_y_to_batchsize(y)
-        
+
         y_hat = torch.transpose(
             torch.vstack(((pred[:, 0] > pred[:, 1]).unsqueeze(0), (pred[:, 0] <= pred[:, 1]).unsqueeze(0))), 0, 1)
         y_hat = (y_hat >= 0.5).to(y.dtype)
 
         correct = (y_hat == y).to(torch.float32)
-        #return torch.mean(correct)
-        
+        # return torch.mean(correct)
+
         pred = self.transform_pred(pred, y)
         accuracy = BinaryAccuracy()
         return torch.mean(correct), accuracy(pred, y)
@@ -91,8 +95,8 @@ class PytorchModel(MLModel):
 
 
 class LSTMModel(PytorchModel):
-    def __init__(self) -> None:
-        super().__init__()
+    def __init__(self, params) -> None:
+        super().__init__(params)
         lstm_input_size = 32
         hidden_state_size = 256
         self.batch_size = 64
@@ -101,6 +105,6 @@ class LSTMModel(PytorchModel):
         self.rnn_type = 'LSTM'
         self.model = BiRNN(lstm_input_size, hidden_state_size, batch_size=self.batch_size, output_dim=output_dim,
                            num_layers=num_sequence_layers, rnn_type=self.rnn_type)
-    
+
     def __str__(self) -> str:
         return self.rnn_type + "Model"

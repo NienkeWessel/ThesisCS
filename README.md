@@ -31,3 +31,29 @@ data = DatasetDict({
                 }),
             })
 ```
+
+## Parameters
+Because of the many different models, there are also many different parameters to set. The parameters are divided up into three categories: 
+- model_params: parameters that determine properties of the model, such as the max_depth of a decision tree
+- data_params: parameters that determine how the data should be processed, such as whether n_gram features should be created or not
+- training_params: parameters that determine how training should proceed, such as the learning_rate or the nr of epochs
+
+What follows, if for each type of model, what parameters can be set. This gets complicated quite quickly but is sadly a consequence of employing a wide variety of models.
+
+### Feature models
+
+
+### Pytorch models
+
+#### LSTM
+- model_params: 
+    * batch_size: the batch_size that the model handless
+
+### Huggingface models
+
+#### PassGPT10
+- model_params:
+    * internet: whether the computer on which everything is run has internet access
+
+- data_params: 
+    * internet: whether the computer on which everything is run has internet access
