@@ -4,12 +4,16 @@ from sklearn.model_selection import train_test_split
 from datasets import DatasetDict, load_from_disk, Dataset
 
 
-def read_words(filename, nr_lines, words=None):
+def read_words_most_common(filename, nr_lines, words=None):
     if words is None:
-        words = []
+        words = set()
     with open(filename, "r") as file:
-        for i in range(nr_lines):
-            words.append(next(file).strip().split("\t")[1])
+        i = 0
+        while i < nr_lines:
+            word = next(file).strip().split("\t")[1]
+            if (len(word) > 1 or word.isalnum()) and word not in words:
+                words.add(word)
+                i += 1
     return words
 
 
@@ -62,15 +66,15 @@ def create_comparison_pw_set(filename, comp_nr_lines=10000, save=False):
 def load_data(pw_filename, languages, lang_files, lang_split, comp_nr_lines, nr_lines, save=False, mode='most_common',
               train_split=0.7, test_val_ratio=0.5, nr_of_sets=3, comp_pw=None):
     passwords, _ = read_passwords(pw_filename, comp_nr_lines, nr_lines, comp_pw)
-    words = []
+    words = set()
     for language in languages:
         if language in lang_split:
             nr_lines_per_lang = int(lang_split[language] * nr_lines)
-            words = read_words(lang_files[language], nr_lines_per_lang, words)
+            words = read_words_most_common(lang_files[language], nr_lines_per_lang, words)
     # print(words)
     print("Nr of passwords: {}\nNr of words: {}".format(len(passwords), len(words)))
 
-    all_words = passwords + words
+    all_words = passwords + list(words)
     labels = (np.concatenate((np.ones(len(passwords)), np.zeros(len(words))), axis=0)).tolist()
 
     random_state = 42
@@ -79,11 +83,11 @@ def load_data(pw_filename, languages, lang_files, lang_split, comp_nr_lines, nr_
 
         train_words, test_val_words, train_labels, test_val_labels = train_test_split(all_words, labels,
                                                                                       train_size=train_split,
-                                                                                      random_state=random_state+n)
+                                                                                      random_state=random_state + n)
 
         test_words, val_words, test_labels, val_labels = train_test_split(test_val_words, test_val_labels,
                                                                           train_size=test_val_ratio,
-                                                                          random_state=random_state+n)
+                                                                          random_state=random_state + n)
 
         print("Training set size: {}\nTest set size: {}\nValidation set size: {}".format(len(train_words),
                                                                                          len(test_words),
@@ -119,24 +123,25 @@ def load_data_from_file(filename):
 
 pw_filename = "10-million-password-list-top-1000000.txt"
 comp_nr_lines = 10000
-nr_lines = 100000
 
-#comparison_pw = create_comparison_pw_set(pw_filename, comp_nr_lines=comp_nr_lines, save=True)
+nr_lines_list = [1000, 10000, 100000, 500000]
+
+# comparison_pw = create_comparison_pw_set(pw_filename, comp_nr_lines=comp_nr_lines, save=True)
 
 comparison_pw = load_from_disk("comparison_pw")
 
 languages = ['English', 'Spanish', 'Dutch', 'Arabic', 'Chinese']
 lang_files = {
     'English': "eng_news_2020_1M-words.txt",
-    'Spanish': "eng_news_2020_1M-words.txt"
+    'Spanish': "spa_news_2022_1M-words.txt"
 }
 lang_split = {
-    'English': 1.0,
-    # 'Spanish': 0.0
+    'English': 0.5,
+    'Spanish': 0.5
 }
 
+for nr_lines in nr_lines_list:
+    load_data(pw_filename, languages, lang_files, lang_split, 0, nr_lines, save=True, comp_pw=comparison_pw)
 
-load_data(pw_filename, languages, lang_files, lang_split, 0, nr_lines, save=True, comp_pw=comparison_pw)
-
-s = make_languages_string(languages, lang_split)
-print(s)
+#s = make_languages_string(languages, lang_split)
+#print(s)
