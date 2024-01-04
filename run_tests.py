@@ -2,13 +2,14 @@ import os
 import time
 import json
 from datasets import load_from_disk, Dataset
+import pandas as pd
 
 from sklearn.model_selection import GridSearchCV
 
-from DataTransformer import FeatureDataTransformer, PytorchDataTransformer, PassGPT10Transformer
+from DataTransformer import FeatureDataTransformer, PytorchDataTransformer, PassGPT10Transformer, ReformerDataTransformer
 from FeatureModel import FeatureModel
 from PytorchModel import PytorchModel, LSTMModel
-from PassGPTModel import HuggingfaceModel, PassGPT10Model
+from PassGPTModel import HuggingfaceModel, PassGPT10Model, ReformerModel
 from FeatureModel import RandomForest, DecisionTree, GaussianNaiveBayes, MultinomialNaiveBayes
 
 
@@ -45,8 +46,10 @@ def transform_data(model, dataset, comparison_pw):
         return FeatureDataTransformer(dataset, model.params['data_params'], comparison_pw['text'])
     elif isinstance(model, PytorchModel):
         return PytorchDataTransformer(dataset, model.params['data_params'])
-    elif isinstance(model, HuggingfaceModel):
+    elif isinstance(model, PassGPT10Model):
         return PassGPT10Transformer(dataset, model.params['data_params'])
+    elif isinstance(model, ReformerModel):
+        return ReformerDataTransformer(dataset, model.params['data_params'])
     else:
         return None
 
@@ -128,6 +131,8 @@ def initialize_model(model_name, params):
         return PassGPT10Model(params)
     if model_name == "DecisionTree":
         return DecisionTree(params)
+    if model_name == "ReformerModel":
+        return ReformerModel(params)
 
 
 def run_all_datasets(folder_name, model_name, params, comparison_pw, saving_folder_name):
@@ -149,22 +154,27 @@ def create_all_models(params):
 def strip_filename(filename):
     return filename.split("/")[-1]
 
-def param_grid_search(model_name, param_grid, params, test_file_name):
+def param_grid_search(model_name, param_grid, params, test_file_name, save_folder="./gridsearchresults/"):
     model = initialize_model(model_name, params)
 
     dataset = load_from_disk(test_file_name)
 
     train_data = transform_data(model, dataset['train'], comparison_pw)
 
+    start = time.time()
     clf = GridSearchCV(model.model, param_grid)
     clf.fit(train_data.X, train_data.y)
+    duration = time.time() - start
 
-    print(clf.cv_results_)
-    with open(model_name+"_FF_"+strip_filename(test_file_name), 'w') as f:
-        json.dump(clf.cv_results_, f)
+    # save the grid search results to a csv file
+    # code partially from https://medium.com/dvt-engineering/hyper-parameter-tuning-for-scikit-learn-ml-models-860747bc3d72
+    results = pd.DataFrame(clf.cv_results_)
+    results.to_csv(save_folder + model_name + "_" + strip_filename(test_file_name) + ".csv")
 
-    print(clf.best_estimator_)
-    print(clf.best_score_)
+    results = results.loc[:, ('rank_test_score', 'mean_test_score', 'params')]
+    results.sort_values(by='rank_test_score', ascending=True, inplace=True)
+
+    return results, duration
 
 
 #print(find_files('datasets'))
@@ -192,7 +202,7 @@ training_params: parameters that determine how training should proceed, such as 
 All these can be specified in a params dictionary, with subdictionaries for the aforementioned three types. 
 The exact set of parameters recognized differs per model and should be specified in the model documentation. 
 """
-internet = False
+internet = True
 
 data_params = {}
 model_params = {}
@@ -218,10 +228,13 @@ params = {'data_params': data_params,
 # model = LSTMModel()
 
 # model = PassGPT10Model(params, load_filename="./models/PassGPT")
-# model_name = "PassGPT10"
-# model = initialize_model(model_name, params)
-# run_test_for_model(model, params, './datasets/test/most_common_En1.0_1000_split0', comparison_pw,
-#                   save_filename="./models/PassGPTmost_common_En1.0_1000_split0")
+#model_name = "PassGPT10"
+
+model_name = "ReformerModel"
+
+model = initialize_model(model_name, params)
+run_test_for_model(model, params, './datasets/test/most_common_En1.0_1000_split0', comparison_pw,
+                   save_filename="./models/Reformermost_common_En1.0_1000_split0")
 # run_test_for_model(model, params, './datasets/test/most_common_En1.0_1000_split2', comparison_pw,
 #                   training=False, load_filename="./models/PassGPT")
 
@@ -232,7 +245,8 @@ params = {'data_params': data_params,
 
 
 # ------------------------------- Parameter grid search -------------------------------
-
+'''
+dataset_files = find_files('datasets/def')
 param_grid_DT = {'criterion': ('gini', 'entropy', 'log_loss'),
                  'splitter': ('best', 'random'),
                  'max_depth': [5, 10, 50, 100, 200, 500, None],
@@ -240,4 +254,9 @@ param_grid_DT = {'criterion': ('gini', 'entropy', 'log_loss'),
                  'min_samples_leaf': [1, 5, 10, 50, 100],
                  'class_weight': ('balanced', {0: 1, 1: 5}, {0: 1, 1: 10})}
 model_name = "DecisionTree"
-param_grid_search(model_name, param_grid_DT, params, './datasets/test/most_common_En1.0_1000_split0')
+print(dataset_files)
+for file in dataset_files:
+    results, duration = param_grid_search(model_name, param_grid_DT, params, './datasets/def/' + file)
+    print(duration)
+    print(results)
+'''

@@ -4,6 +4,8 @@ import torch.nn.functional
 from Levenshtein import distance as lev
 from sklearn.feature_extraction.text import CountVectorizer
 from transformers import RobertaTokenizerFast
+from datasets import Dataset
+
 
 
 class DataTransformer(ABC):
@@ -134,3 +136,51 @@ class PassGPT10Transformer(DataTransformer):
                                                          truncation_side="right", is_split_into_words=True)
 
         self.X = tokenizer(dataset['text'], truncation=True, padding=True, max_length=12)  # return_tensors='pt'
+        print(self.X)
+
+class ReformerDataTransformer(DataTransformer):
+    def __init__(self, dataset, params) -> None:
+        super().__init__(dataset, params)
+        self.y = (torch.nn.functional.one_hot(torch.as_tensor(dataset['label']).to(torch.int64), num_classes=2)).to(
+            float)
+        encoded_data = self.encode(dataset['text'])
+        print(encoded_data)
+        self.X = {
+                    'input_ids': encoded_data[0],
+                    'attention_mask': encoded_data[1]
+        }
+        # transform the data structure so that the code that follows will work (i.e. transform into huggingface dataset so that the update in the other file can happen)
+        print(self.X)
+    
+    def encode(self, list_of_strings, pad_token_id=0):
+        '''
+        Model does not need a tokenizer, but instead uses fixed encoding and decoding
+        Code taken from: https://huggingface.co/google/reformer-enwik8
+        '''
+        max_length = max([len(string) for string in list_of_strings])
+
+        # create emtpy tensors
+        attention_masks = torch.zeros((len(list_of_strings), max_length), dtype=torch.long)
+        input_ids = torch.full((len(list_of_strings), max_length), pad_token_id, dtype=torch.long)
+
+        for idx, string in enumerate(list_of_strings):
+            # make sure string is in byte format
+            if not isinstance(string, bytes):
+                string = str.encode(string)
+
+            input_ids[idx, :len(string)] = torch.tensor([x + 2 for x in string])
+            attention_masks[idx, :len(string)] = 1
+
+        return input_ids, attention_masks
+        
+    # Decoding
+    def decode(self, outputs_ids):
+        '''
+        Model does not need a tokenizer, but instead uses fixed encoding and decoding
+        Code taken from: https://huggingface.co/google/reformer-enwik8
+        '''
+        decoded_outputs = []
+        for output_ids in outputs_ids.tolist():
+            # transform id back to char IDs < 2 are simply transformed to ""
+            decoded_outputs.append("".join([chr(x - 2) if x > 1 else "" for x in output_ids]))
+        return decoded_outputs
