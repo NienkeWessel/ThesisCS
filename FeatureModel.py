@@ -47,7 +47,13 @@ class FeatureModel(MLModel):
 class RandomForest(FeatureModel):
     def __init__(self, params) -> None:
         super().__init__(params)
-        self.model = RandomForestClassifier(max_depth=10, random_state=0)
+        model_params = self.params['model_params']
+        if 'n_estimators' in model_params:
+            n_estimators = model_params['criterion']
+        else:
+            n_estimators = 100
+
+        self.model = RandomForestClassifier(n_estimators=n_estimators, random_state=0)
 
     def __str__(self) -> str:
         return "RandomForestModel"

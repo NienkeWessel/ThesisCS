@@ -4,6 +4,8 @@ import json
 from datasets import load_from_disk, Dataset
 import pandas as pd
 
+import sys
+
 from sklearn.model_selection import GridSearchCV
 
 from DataTransformer import FeatureDataTransformer, PytorchDataTransformer, PassGPT10Transformer, ReformerDataTransformer
@@ -55,13 +57,17 @@ def transform_data(model, dataset, comparison_pw):
 
 
 def run_test_for_model(model, params, test_file_name, comparison_pw, training=True, load_filename=None,
-                       save_filename=None):
+                       save_filename=None, use_val=False):
+    print(f"Running test on model {model} with file {test_file_name}")
     metrics = {}
 
     dataset = load_from_disk(test_file_name)
 
     train_data = transform_data(model, dataset['train'], comparison_pw)
-    test_data = transform_data(model, dataset['test'], comparison_pw)
+    if use_val:
+        test_data = transform_data(model, dataset['validation'], comparison_pw)
+    else:
+        test_data = transform_data(model, dataset['test'], comparison_pw)
 
     if load_filename is not None:
         model.load_model(load_filename)
@@ -77,19 +83,19 @@ def run_test_for_model(model, params, test_file_name, comparison_pw, training=Tr
     predictions = model.predict(test_data.X)
 
     accuracy = model.calc_accuracy(test_data.y, predictions)
-    print(accuracy)
+    print(f"Accuracy: {accuracy}")
     metrics['accuracy'] = accuracy
 
     recall = model.calc_recall(test_data.y, predictions)
-    print(recall)
+    print(f"Accuracy: {accuracy}")
     metrics['recall'] = recall
 
     precision = model.calc_precision(test_data.y, predictions)
-    print(precision)
+    print(f"Precision: {precision}")
     metrics['precision'] = precision
 
     f1 = model.calc_f1score(test_data.y, predictions)
-    print(f1)
+    print(f"F1: {f1}")
     metrics['f1'] = f1
 
     metrics['running_time'] = time.time() - start_time
@@ -133,15 +139,19 @@ def initialize_model(model_name, params):
         return DecisionTree(params)
     if model_name == "ReformerModel":
         return ReformerModel(params)
+    if model_name == "NaiveBayes":
+        return GaussianNaiveBayes(params)
+    if model_name == "MultinomialBayes":
+        return MultinomialNaiveBayes(params)
 
 
-def run_all_datasets(folder_name, model_name, params, comparison_pw, saving_folder_name):
+def run_all_datasets(folder_name, model_name, params, comparison_pw, saving_folder_name, use_val=False):
     results = {}
     files = find_files(folder_name)
     for file in files:
         model = initialize_model(model_name, params)
         results[file] = run_test_for_model(model, params, folder_name + file, comparison_pw,
-                                           save_filename=saving_folder_name + str(model) + "_" + file)
+                                           save_filename=saving_folder_name + str(model) + "_" + file, use_val=use_val)
     with open(model_name, 'w') as f:
         json.dump(results, f, indent=4)
     return results
@@ -151,8 +161,10 @@ def create_all_models(params):
     return [RandomForest(params), LSTMModel(params), PassGPT10Model(params), GaussianNaiveBayes(params),
             MultinomialNaiveBayes(params), DecisionTree(params)]
 
+
 def strip_filename(filename):
     return filename.split("/")[-1]
+
 
 def param_grid_search(model_name, param_grid, params, test_file_name, save_folder="./gridsearchresults/"):
     model = initialize_model(model_name, params)
@@ -232,31 +244,44 @@ params = {'data_params': data_params,
 
 model_name = "ReformerModel"
 
+##model_name = "NaiveBayes"
 model = initialize_model(model_name, params)
-run_test_for_model(model, params, './datasets/test/most_common_En1.0_1000_split0', comparison_pw,
+run_test_for_model(model, params, './datasets/def/most_common_En1.0_1000_split0', comparison_pw,
                    save_filename="./models/Reformermost_common_En1.0_1000_split0")
-# run_test_for_model(model, params, './datasets/test/most_common_En1.0_1000_split2', comparison_pw,
+# run_test_for_model(model, params, './datasets/def/most_common_En1.0_1000_split2', comparison_pw,
 #                   training=False, load_filename="./models/PassGPT")
 
-# print(run_all_datasets("./datasets/test/", model_name, params, comparison_pw, "./models/"))
+# print(run_all_datasets("./datasets/def/", model_name, params, comparison_pw, "./models/"))
 
-# print_dataset(load_from_disk('./datasets/test/most_common_En1.0_10000_split0'))
-# print_dataset(load_from_disk('./datasets/test/most_common_En1.0_10000_split1'))
+# print_dataset(load_from_disk('./datasets/def/most_common_En1.0_10000_split0'))
+# print_dataset(load_from_disk('./datasets/def/most_common_En1.0_10000_split1'))
 
+datasetname=sys.argv[1]
+
+'''
+run_test_for_model(model, params, f"./datasets/def/{datasetname}", comparison_pw,
+                   save_filename=f"./models/PassGPT{datasetname}")
+'''
 
 # ------------------------------- Parameter grid search -------------------------------
 '''
+grids = {
+    "DecisionTree": {'criterion': ('gini', 'entropy', 'log_loss'),
+                     'splitter': ('best', 'random'),
+                     'max_depth': [5, 10, 50, 100, 200, 500, None],
+                     'min_samples_split': [2, 5, 10, 50, 100, 200, 500],
+                     'min_samples_leaf': [1, 5, 10, 50, 100],
+                     'class_weight': ('balanced', {0: 1, 1: 5}, {0: 1, 1: 10})},
+    "RandomForest": {
+                     'n_estimators': [10, 50, 100, 200],
+    }
+}
+
 dataset_files = find_files('datasets/def')
-param_grid_DT = {'criterion': ('gini', 'entropy', 'log_loss'),
-                 'splitter': ('best', 'random'),
-                 'max_depth': [5, 10, 50, 100, 200, 500, None],
-                 'min_samples_split': [2, 5, 10, 50, 100, 200, 500],
-                 'min_samples_leaf': [1, 5, 10, 50, 100],
-                 'class_weight': ('balanced', {0: 1, 1: 5}, {0: 1, 1: 10})}
 model_name = "DecisionTree"
 print(dataset_files)
 for file in dataset_files:
-    results, duration = param_grid_search(model_name, param_grid_DT, params, './datasets/def/' + file)
+    results, duration = param_grid_search(model_name, grids[model_name], params, './datasets/def/' + file)
     print(duration)
     print(results)
 '''
