@@ -133,11 +133,17 @@ comparison_pw = load_from_disk("comparison_pw")
 languages = ['English', 'Spanish', 'Dutch', 'Arabic', 'Chinese']
 lang_files = {
     'English': "eng_news_2020_1M-words.txt",
-    'Spanish': "spa_news_2022_1M-words.txt"
+    'Spanish': "spa_news_2022_1M-words.txt",
+    'Dutch': "nld_news_2022_1M-words.txt",
+    'Arabic': "ara_news_2022_1M-words.txt",
+    'Russian': "rus_news_2022_1M-words.txt"
 }
 lang_split = {
-    'English': 0.5,
-    'Spanish': 0.5
+#    'English': 0.5,
+#    'Spanish': 0.5,
+#    'Dutch': 0.5,
+    'Arabic': 1.0,
+#    'Russian': 0.0
 }
 
 for nr_lines in nr_lines_list:
