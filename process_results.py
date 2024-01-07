@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
-
+import math
 
 def find_base_filename(filename):
     return '_'.join(filename.split("_")[:-1])
@@ -61,19 +61,27 @@ def transform_data(summary):
     return table
 
 
-def plot_data(table):
+def plot_data(table, title):
+    # Code inspired by https://engineeringfordatascience.com/posts/matplotlib_subplots/
     scores = ['accuracy', 'recall', 'precision', 'f1']
-    table = table[table['languages'] == 'En1.0']
-    fig, ax = plt.subplots()
+    languages = table['languages'].unique()
+    plt.figure(figsize=(15, 12))
+    #plt.subplots_adjust(hspace=0.5)
+    plt.suptitle(title, fontsize=18, y=0.95)
+    #table = table[table['languages'] == 'En1.0']
+    #fig, ax = plt.subplots(nrows=(len(scores)+1)/2, ncols=2)
     print(table)
-    for score in scores:
-        ax = sns.lineplot(data=table, x="size", y=score, errorbar=None, label=score, ax=ax)
-        ax.fill_between(table['size'], y1=table[score] - table[score+"_std"], y2=table[score] + table[score+"_std"], alpha=0.2)
+    for i, score in enumerate(scores):
+        ax = plt.subplot(math.ceil(len(scores)), 2, i+1)
+        for language in languages:
+            subtable = table[table['languages'] == language]
+            ax = sns.lineplot(data=subtable, x="size", y=score, errorbar=None, label=language, ax=ax)
+            ax.fill_between(subtable['size'], y1=subtable[score] - subtable[score+"_std"], y2=subtable[score] + subtable[score+"_std"], alpha=0.2)
     plt.legend()
     ax.set_ylabel("score")
-    plt.savefig('test.png')
+    plt.savefig(f'{title}.png')
 
 
 summary = calc_averages('ValSetResults/NaiveBayes')
 table = transform_data(summary)
-plot_data(table)
+plot_data(table, "Gaussian Naive Bayes")
