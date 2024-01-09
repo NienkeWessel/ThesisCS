@@ -8,11 +8,12 @@ import sys
 
 from sklearn.model_selection import GridSearchCV
 
-from DataTransformer import FeatureDataTransformer, PytorchDataTransformer, PassGPT10Transformer, ReformerDataTransformer
+from DataTransformer import FeatureDataTransformer, PytorchDataTransformer, PassGPT10Transformer, \
+    ReformerDataTransformer
 from FeatureModel import FeatureModel
 from PytorchModel import PytorchModel, LSTMModel
 from PassGPTModel import HuggingfaceModel, PassGPT10Model, ReformerModel
-from FeatureModel import RandomForest, DecisionTree, GaussianNaiveBayes, MultinomialNaiveBayes
+from FeatureModel import RandomForest, DecisionTree, GaussianNaiveBayes, MultinomialNaiveBayes, KNearestNeighbors
 
 
 def find_files(dir):
@@ -135,14 +136,18 @@ def print_dataset(dataset, split='train'):
 def initialize_model(model_name, params):
     if model_name == "PassGPT10":
         return PassGPT10Model(params)
-    if model_name == "DecisionTree":
-        return DecisionTree(params)
     if model_name == "ReformerModel":
         return ReformerModel(params)
+    if model_name == "DecisionTree":
+        return DecisionTree(params)
+    if model_name == "RandomForest":
+        return RandomForest(params)
     if model_name == "NaiveBayes":
         return GaussianNaiveBayes(params)
     if model_name == "MultinomialBayes":
         return MultinomialNaiveBayes(params)
+    if model_name == "KNearestNeighbors":
+        return KNearestNeighbors(params)
 
 
 def run_all_datasets(folder_name, model_name, params, comparison_pw, saving_folder_name, use_val=False):
@@ -189,7 +194,7 @@ def param_grid_search(model_name, param_grid, params, test_file_name, save_folde
     return results, duration
 
 
-#print(find_files('datasets'))
+# print(find_files('datasets'))
 
 comparison_pw = load_from_disk("comparison_pw")
 
@@ -214,7 +219,7 @@ training_params: parameters that determine how training should proceed, such as 
 All these can be specified in a params dictionary, with subdictionaries for the aforementioned three types. 
 The exact set of parameters recognized differs per model and should be specified in the model documentation. 
 """
-internet = True
+internet = False
 
 data_params = {}
 model_params = {}
@@ -236,27 +241,29 @@ params = {'data_params': data_params,
 
 # model = DecisionTree(params)
 # model_name = "DecisionTree"
-
+# model_name = "KNearestNeighbors"
 # model = LSTMModel()
 
 # model = PassGPT10Model(params, load_filename="./models/PassGPT")
-#model_name = "PassGPT10"
+# model_name = "PassGPT10"
 
-model_name = "ReformerModel"
 
-##model_name = "NaiveBayes"
+#model_name = "ReformerModel"
+
+model_name = "RandomForest"
 model = initialize_model(model_name, params)
-run_test_for_model(model, params, './datasets/def/most_common_En1.0_1000_split0', comparison_pw,
-                   save_filename="./models/Reformermost_common_En1.0_1000_split0")
-# run_test_for_model(model, params, './datasets/def/most_common_En1.0_1000_split2', comparison_pw,
-#                   training=False, load_filename="./models/PassGPT")
+run_test_for_model(model, params, './datasets/def/most_common_En1.0_1000_split0', comparison_pw)
+#run_test_for_model(model, params, './datasets/def/most_common_En1.0_1000_split0', comparison_pw,
+#                   save_filename="./models/Reformermost_common_En1.0_1000_split0")
+#run_test_for_model(model, params, './datasets/def/most_common_En1.0_1000_split0', comparison_pw,
+#                   training=False, load_filename="./models/Reformermost_common_En1.0_1000_split0")
 
 # print(run_all_datasets("./datasets/def/", model_name, params, comparison_pw, "./models/"))
 
 # print_dataset(load_from_disk('./datasets/def/most_common_En1.0_10000_split0'))
 # print_dataset(load_from_disk('./datasets/def/most_common_En1.0_10000_split1'))
 
-datasetname=sys.argv[1]
+# datasetname=sys.argv[1]
 
 '''
 run_test_for_model(model, params, f"./datasets/def/{datasetname}", comparison_pw,
@@ -266,19 +273,29 @@ run_test_for_model(model, params, f"./datasets/def/{datasetname}", comparison_pw
 # ------------------------------- Parameter grid search -------------------------------
 '''
 grids = {
-    "DecisionTree": {'criterion': ('gini', 'entropy', 'log_loss'),
-                     'splitter': ('best', 'random'),
-                     'max_depth': [5, 10, 50, 100, 200, 500, None],
-                     'min_samples_split': [2, 5, 10, 50, 100, 200, 500],
-                     'min_samples_leaf': [1, 5, 10, 50, 100],
-                     'class_weight': ('balanced', {0: 1, 1: 5}, {0: 1, 1: 10})},
+    "DecisionTree": {
+        'criterion': ('gini', 'entropy', 'log_loss'),
+        'splitter': ('best', 'random'),
+        'max_depth': [5, 10, 50, 100, 200, 500, None],
+        'min_samples_split': [2, 5, 10, 50, 100, 200, 500],
+        'min_samples_leaf': [1, 5, 10, 50, 100],
+        'class_weight': ('balanced', {0: 1, 1: 5}, {0: 1, 1: 10})},
     "RandomForest": {
-                     'n_estimators': [10, 50, 100, 200],
-    }
+        'n_estimators': [10, 50, 100, 200],
+        'criterion': ('gini', 'entropy', 'log_loss'),
+        'max_depth': [5, 10, 50, 100, 200, 500, None],
+        'min_samples_split': [2, 5, 10, 50, 100, 200, 500],
+        'min_samples_leaf': [1, 5, 10, 50, 100],
+    },
+    "KNearestNeighbors": {'n_neighbors': [2, 3, 5, 10, 20, 50],
+                          'weights': ('uniform', 'distance'),
+                          'metric': ('minkowski', 'cosine'),
+                          'p': [1, 2, 5, 10],
+                          },
 }
 
 dataset_files = find_files('datasets/def')
-model_name = "DecisionTree"
+model_name = "RandomForest"
 print(dataset_files)
 for file in dataset_files:
     results, duration = param_grid_search(model_name, grids[model_name], params, './datasets/def/' + file)

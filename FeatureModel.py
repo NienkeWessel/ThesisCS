@@ -5,6 +5,7 @@ from sklearn import tree
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.naive_bayes import GaussianNB
 from sklearn.naive_bayes import MultinomialNB
+from sklearn.neighbors import KNeighborsClassifier
 
 import skops.io as sio
 
@@ -52,8 +53,29 @@ class RandomForest(FeatureModel):
             n_estimators = model_params['criterion']
         else:
             n_estimators = 100
+        if 'criterion' in model_params:
+            criterion = model_params['criterion']
+        else:
+            criterion = "gini"
 
-        self.model = RandomForestClassifier(n_estimators=n_estimators, random_state=0)
+        if 'max_depth' in model_params:
+            max_depth = model_params['max_depth']
+        else:
+            max_depth = None
+
+        if 'min_samples_split' in model_params:
+            min_samples_split = model_params['min_samples_split']
+        else:
+            min_samples_split = 2
+
+        if 'min_samples_leaf' in model_params:
+            min_samples_leaf = model_params['min_samples_leaf']
+        else:
+            min_samples_leaf = 1
+
+        self.model = RandomForestClassifier(n_estimators=n_estimators, criterion=criterion, max_depth=max_depth,
+                                            min_samples_split=min_samples_split, min_samples_leaf=min_samples_leaf,
+                                            random_state=0)
 
     def __str__(self) -> str:
         return "RandomForestModel"
@@ -101,6 +123,36 @@ class DecisionTree(FeatureModel):
     def __str__(self) -> str:
         return "DecisionTreeModel"
 
+
+class KNearestNeighbors(FeatureModel):
+    def __init__(self, params) -> None:
+        super().__init__(params)
+
+        model_params = self.params['model_params']
+        if 'n_neighbors' in model_params:
+            n_neighbors = model_params['n_neighbors']
+        else:
+            n_neighbors = 5
+
+        if 'weights' in model_params:
+            weights = model_params['weights']
+        else:
+            weights = 'uniform'
+
+        if 'metric' in model_params:
+            metric = model_params['metric']
+        else:
+            metric = 'minkowski'
+
+        if 'p' in model_params:
+            p = model_params['p']
+        else:
+            p = 2
+
+        self.model = KNeighborsClassifier(n_neighbors=n_neighbors, weights=weights, p=p, metric=metric)
+
+    def __str__(self) -> str:
+        return "KNearestNeighbors"
 
 class GaussianNaiveBayes(FeatureModel):
     def __init__(self, params) -> None:
