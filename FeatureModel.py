@@ -166,7 +166,13 @@ class GaussianNaiveBayes(FeatureModel):
 class MultinomialNaiveBayes(FeatureModel):
     def __init__(self, params) -> None:
         super().__init__(params)
-        self.model = MultinomialNB()
+        model_params = self.params['model_params']
+        if 'alpha' in model_params:
+            alpha = model_params['alpha']
+        else:
+            alpha = 1.0
+
+        self.model = MultinomialNB(alpha=alpha)
 
     def __str__(self) -> str:
         return "MultinomialNBModel"
