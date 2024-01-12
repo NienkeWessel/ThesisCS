@@ -6,6 +6,9 @@ from build_datasets import CharacterDataset
 import torch
 from torchmetrics.classification import BinaryRecall, BinaryAccuracy, BinaryPrecision, BinaryF1Score
 from d2l import torch as d2l
+import matplotlib.pyplot as plt
+
+device = d2l.try_gpu()
 
 
 class PytorchModel(MLModel):
@@ -22,11 +25,16 @@ class PytorchModel(MLModel):
             epochs = params['epochs']
         else:
             epochs = 1
+        if 'fig_name' in params:
+            fig_name = params['fig_name']
+        else:
+            fig_name = "loss.png"
         train_onesplit(self.model, X, y, epochs=epochs)
 
-    def predict(self, X):
-        device = d2l.try_gpu()
+        # save the plot made in the train function in the train.py file
+        plt.savefig(fig_name)
 
+    def predict(self, X):
         test = CharacterDataset(X)
         train_loader = torch.utils.data.DataLoader(test, batch_size=self.batch_size, shuffle=False, drop_last=True)
         self.model.train(False)
@@ -52,6 +60,10 @@ class PytorchModel(MLModel):
         return (y_hat >= 0.5).to(y.dtype)
 
     def calc_accuracy(self, y, pred):
+
+        y = y.to(device)
+        pred = pred.to(device)
+
         if len(y) != len(pred):
             y = self.cut_of_y_to_batchsize(y)
 
@@ -63,28 +75,34 @@ class PytorchModel(MLModel):
         # return torch.mean(correct)
 
         pred = self.transform_pred(pred, y)
-        accuracy = BinaryAccuracy()
+        accuracy = BinaryAccuracy().to(device)
         return torch.mean(correct), accuracy(pred, y)
 
     def calc_recall(self, y, pred):
+        y = y.to(device)
+        pred = pred.to(device)
         if len(y) != len(pred):
             y = self.cut_of_y_to_batchsize(y)
         pred = self.transform_pred(pred, y)
-        recall = BinaryRecall()
+        recall = BinaryRecall().to(device)
         return recall(pred, y)
 
     def calc_precision(self, y, pred):
+        y = y.to(device)
+        pred = pred.to(device)
         if len(y) != len(pred):
             y = self.cut_of_y_to_batchsize(y)
         pred = self.transform_pred(pred, y)
-        precision = BinaryPrecision()
+        precision = BinaryPrecision().to(device)
         return precision(pred, y)
 
     def calc_f1score(self, y, pred):
+        y = y.to(device)
+        pred = pred.to(device)
         if len(y) != len(pred):
             y = self.cut_of_y_to_batchsize(y)
         pred = self.transform_pred(pred, y)
-        f1score = BinaryF1Score()
+        f1score = BinaryF1Score().to(device)
         return f1score(pred, y)
 
     def load_model(self, filename):

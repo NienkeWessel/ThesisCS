@@ -1,8 +1,8 @@
 import torch
 import torch.nn as nn
-from utils import get_device
+from d2l import torch as d2l
 from global_variables import *
-device = get_device()
+device = d2l.try_gpu()
 
 
 class BiRNN(nn.Module):
@@ -38,8 +38,8 @@ class BiRNN(nn.Module):
 
     def init_hidden(self):
         # This is what we'll initialise our hidden state as
-        return (torch.zeros(self.num_layers*2, self.batch_size, self.hidden_dim),
-                torch.zeros(self.num_layers*2, self.batch_size, self.hidden_dim))
+        return (torch.zeros(self.num_layers*2, self.batch_size, self.hidden_dim).to(device),
+                torch.zeros(self.num_layers*2, self.batch_size, self.hidden_dim).to(device))
 
     def forward(self, input):
         
