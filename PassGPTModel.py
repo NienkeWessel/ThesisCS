@@ -128,7 +128,6 @@ class PassGPT10Model(HuggingfaceModel):
         self.trainer.train()
 
     def predict(self, X):
-        print(X)
         dataset = HuggingfaceDataset.from_dict(X)
         return self.trainer.predict(dataset)
 
@@ -166,7 +165,7 @@ class ReformerModel(HuggingfaceModel):
             model_loc = "google/reformer-enwik8"
         else:
             model_loc = "reformer-enwik8"
-        conf = ReformerConfig.from_pretrained('google/reformer-enwik8')
+        conf = ReformerConfig.from_pretrained(model_loc)
         conf.axial_pos_embds = False 
         self.model = AutoModelForSequenceClassification.from_pretrained(model_loc, config =conf)
 
@@ -207,12 +206,13 @@ class ReformerModel(HuggingfaceModel):
         self.trainer.train()
 
     def predict(self, X):
-        print(X)
         dataset = HuggingfaceDataset.from_dict(X)
         return self.trainer.predict(dataset)
 
     def load_model(self, filename):
-        self.model = ReformerForSequenceClassification.from_pretrained(filename, num_labels=2)
+        conf = ReformerConfig.from_pretrained(filename)
+        conf.axial_pos_embds = False
+        self.model = ReformerForSequenceClassification.from_pretrained(filename, config=conf)
 
     def __str__(self) -> str:
         return "ReformerModel"
