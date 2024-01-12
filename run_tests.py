@@ -1,4 +1,5 @@
 import os
+#os.environ["CUDA_VISIBLE_DEVICES"] = "3,4"
 import time
 import json
 from datasets import load_from_disk, Dataset
@@ -138,13 +139,15 @@ def initialize_model(model_name, params):
         return PassGPT10Model(params)
     if model_name == "ReformerModel":
         return ReformerModel(params)
+    if model_name == "LSTM":
+        return LSTMModel(params)
     if model_name == "DecisionTree":
         return DecisionTree(params)
     if model_name == "RandomForest":
         return RandomForest(params)
     if model_name == "NaiveBayes":
         return GaussianNaiveBayes(params)
-    if model_name == "MultinomialBayes":
+    if model_name == "MultinomialNaiveBayes":
         return MultinomialNaiveBayes(params)
     if model_name == "KNearestNeighbors":
         return KNearestNeighbors(params)
@@ -155,6 +158,8 @@ def run_all_datasets(folder_name, model_name, params, comparison_pw, saving_fold
     files = find_files(folder_name)
     for file in files:
         model = initialize_model(model_name, params)
+        if model_name == "LSTM":
+            params['train_params']['fig_name'] = "Loss_LSTM_" + file + ".png"
         results[file] = run_test_for_model(model, params, folder_name + file, comparison_pw,
                                            save_filename=saving_folder_name + str(model) + "_" + file, use_val=use_val)
     with open(model_name, 'w') as f:
@@ -231,8 +236,10 @@ data_params['ngram_range'] = (1, 2)
 data_params['internet'] = internet
 
 train_params['epochs'] = 2
+train_params['fig_name'] = 'test.png' # For the LSTM
 
 model_params['max_depth'] = 2
+model_params['batch_size'] = 64
 model_params['internet'] = internet
 
 params = {'data_params': data_params,
@@ -248,17 +255,17 @@ params = {'data_params': data_params,
 # model_name = "PassGPT10"
 
 
-#model_name = "ReformerModel"
-
-model_name = "RandomForest"
+model_name = "ReformerModel"
+#model_name = "LSTM"
+#model_name = "MultinomialNaiveBayes"
 model = initialize_model(model_name, params)
-run_test_for_model(model, params, './datasets/def/most_common_En1.0_1000_split0', comparison_pw)
+#run_test_for_model(model, params, './datasets/def/most_common_En1.0_1000_split0', comparison_pw)
 #run_test_for_model(model, params, './datasets/def/most_common_En1.0_1000_split0', comparison_pw,
-#                   save_filename="./models/Reformermost_common_En1.0_1000_split0")
-#run_test_for_model(model, params, './datasets/def/most_common_En1.0_1000_split0', comparison_pw,
-#                   training=False, load_filename="./models/Reformermost_common_En1.0_1000_split0")
+#                   save_filename="./models/Reformer_most_common_En1.0_1000_split0")
+run_test_for_model(model, params, './datasets/def/most_common_En1.0_1000_split0', comparison_pw,
+                   training=False, load_filename="./models/Reformer_most_common_En1.0_1000_split0")
 
-# print(run_all_datasets("./datasets/def/", model_name, params, comparison_pw, "./models/"))
+#print(run_all_datasets("./datasets/def/", model_name, params, comparison_pw, "./models/"))
 
 # print_dataset(load_from_disk('./datasets/def/most_common_En1.0_10000_split0'))
 # print_dataset(load_from_disk('./datasets/def/most_common_En1.0_10000_split1'))
@@ -271,7 +278,7 @@ run_test_for_model(model, params, f"./datasets/def/{datasetname}", comparison_pw
 '''
 
 # ------------------------------- Parameter grid search -------------------------------
-'''
+"""
 grids = {
     "DecisionTree": {
         'criterion': ('gini', 'entropy', 'log_loss'),
@@ -287,18 +294,22 @@ grids = {
         'min_samples_split': [2, 5, 10, 50, 100, 200, 500],
         'min_samples_leaf': [1, 5, 10, 50, 100],
     },
-    "KNearestNeighbors": {'n_neighbors': [2, 3, 5, 10, 20, 50],
-                          'weights': ('uniform', 'distance'),
-                          'metric': ('minkowski', 'cosine'),
-                          'p': [1, 2, 5, 10],
-                          },
+    "KNearestNeighbors": {
+        'n_neighbors': [2, 3, 5, 10, 20, 50],
+        'weights': ('uniform', 'distance'),
+        'metric': ('minkowski', 'cosine'),
+        'p': [1, 2, 5, 10],
+    },
+    'MultinomialNaiveBayes': {
+        'alpha': [0.0, 0.5, 1.0], # no smoothing, Lidstone smoothing, and Laplace smoothing
+    }
 }
 
 dataset_files = find_files('datasets/def')
-model_name = "RandomForest"
+model_name = "MultinomialNaiveBayes"
 print(dataset_files)
 for file in dataset_files:
     results, duration = param_grid_search(model_name, grids[model_name], params, './datasets/def/' + file)
     print(duration)
     print(results)
-'''
+"""
