@@ -7,6 +7,8 @@ palette = sns.color_palette("colorblind")
 sns.set(font_scale=1.5)
 import math
 
+from utils import find_files_in_folder
+
 lang_map = {
     'En0.5Sp0.5' : "50% English, 50% Spanish",
     'En1.0' : "100% English"
@@ -58,18 +60,19 @@ def calc_averages(filename):
     return mean_results
 
 
-def transform_data(summary):
+def transform_data(summary, model_name = "NaiveBayes"):
     table = pd.DataFrame.from_dict(summary, orient='index')
     table = table.rename_axis('dataset')
     table = table.reset_index()
     table['split'] = table.apply(lambda row: row['dataset'].split("_")[-1], axis=1)
     table['size'] = table.apply(lambda row: row['dataset'].split("_")[-2], axis=1)
     table['languages'] = table.apply(lambda row: lang_map[row['dataset'].split("_")[-3]], axis=1)
+    table['model'] = model_name
     table.sort_values(by='size', ascending=True, inplace=True)
     return table
 
 
-def plot_data(table, title):
+def plot_data(table, title, type_of_plot="languages"):
     # Code inspired by https://engineeringfordatascience.com/posts/matplotlib_subplots/
     scores = ['accuracy', 'recall', 'precision', 'f1']
     fig, axs = plt.subplots(math.ceil(len(scores)/2), 2, figsize=(15,9), sharey=True)
@@ -78,7 +81,7 @@ def plot_data(table, title):
     print(table)
     for i, score in enumerate(scores):
         axs[i] = plt.subplot(math.ceil(len(scores)/2), 2, i+1)
-        axs[i] = sns.lineplot(data=table, x="size", y=score, ax=axs[i], hue="languages", style="languages", palette=palette)
+        axs[i] = sns.lineplot(data=table, x="size", y=score, ax=axs[i], hue=type_of_plot, style=type_of_plot, palette=palette)
         axs[i].get_legend().remove()
         axs[i].set(title=score)
     lines, labels = fig.axes[0].get_legend_handles_labels()
@@ -86,7 +89,7 @@ def plot_data(table, title):
            labels,   # The labels for each line
            loc="lower center",   # Position of legend
            borderaxespad=0.1,    # Small spacing around legend box
-           title="Dataset languages",  # Title for the legend
+           title=type_of_plot,  # Title for the legend
            bbox_to_anchor = (0, -0.1, 1, 1),
            ncol=4,
            frameon=False
@@ -95,8 +98,23 @@ def plot_data(table, title):
     plt.savefig(f'{title}.png', bbox_inches='tight')
 
 
+def plot_diff_models(folder="ValSetResults/", lang="100% English"):
+    files = find_files_in_folder(folder)
+    print(files)
+    results = []
+    for file in files:
+        with open(folder + file, 'r') as f:
+            results.append(transform_data(json.load(f), model_name=file))
+    df = pd.concat(results)
+    df = df[df["languages"] == lang]
+    print(df)
+    plot_data(df, "Scores of models", type_of_plot="model")
+
+
+
 #summary = calc_averages('ValSetResults/NaiveBayes')
 with open('ValSetResults/NaiveBayes', 'r') as f:
     results = json.load(f)
 table = transform_data(results)
 plot_data(table, "Gaussian Naive Bayes")
+plot_diff_models()

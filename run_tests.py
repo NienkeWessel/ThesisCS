@@ -1,5 +1,5 @@
 import os
-#os.environ["CUDA_VISIBLE_DEVICES"] = "3,4"
+# os.environ["CUDA_VISIBLE_DEVICES"] = "3,4"
 import time
 import json
 from datasets import load_from_disk, Dataset
@@ -16,14 +16,8 @@ from PytorchModel import PytorchModel, LSTMModel
 from PassGPTModel import HuggingfaceModel, PassGPT10Model, ReformerModel
 from FeatureModel import RandomForest, DecisionTree, GaussianNaiveBayes, MultinomialNaiveBayes, KNearestNeighbors
 
+from utils import find_files_in_folder
 
-def find_files(dir):
-    """
-    Lists all files in a directory
-    :param dir: the directory of which the files need to be listed
-    :return: list of files in that directory
-    """
-    return os.listdir(dir)
 
 
 def create_dummy_dataset():
@@ -89,7 +83,7 @@ def run_test_for_model(model, params, test_file_name, comparison_pw, training=Tr
     metrics['accuracy'] = accuracy
 
     recall = model.calc_recall(test_data.y, predictions)
-    print(f"Accuracy: {accuracy}")
+    print(f"Recall: {recall}")
     metrics['recall'] = recall
 
     precision = model.calc_precision(test_data.y, predictions)
@@ -153,15 +147,23 @@ def initialize_model(model_name, params):
         return KNearestNeighbors(params)
 
 
-def run_all_datasets(folder_name, model_name, params, comparison_pw, saving_folder_name, use_val=False):
+def run_all_datasets(folder_name, model_name, params, comparison_pw, saving_folder_name=None, use_val=False, training=True,
+                     files=None):
     results = {}
-    files = find_files(folder_name)
+    if files is None:
+        files = find_files_in_folder(folder_name)
     for file in files:
         model = initialize_model(model_name, params)
+        if saving_folder_name is None:
+            save_filename = None
+        else:
+            save_filename = saving_folder_name + str(model) + "_" + file
         if model_name == "LSTM":
             params['train_params']['fig_name'] = "Loss_LSTM_" + file + ".png"
         results[file] = run_test_for_model(model, params, folder_name + file, comparison_pw,
-                                           save_filename=saving_folder_name + str(model) + "_" + file, use_val=use_val)
+                                           save_filename=save_filename, use_val=use_val,
+                                           training=training)
+    print(results)
     with open(model_name, 'w') as f:
         json.dump(results, f, indent=4)
     return results
@@ -199,7 +201,7 @@ def param_grid_search(model_name, param_grid, params, test_file_name, save_folde
     return results, duration
 
 
-# print(find_files('datasets'))
+# print(find_files_in_folder('datasets'))
 
 comparison_pw = load_from_disk("comparison_pw")
 
@@ -236,7 +238,7 @@ data_params['ngram_range'] = (1, 2)
 data_params['internet'] = internet
 
 train_params['epochs'] = 2
-train_params['fig_name'] = 'test.png' # For the LSTM
+train_params['fig_name'] = 'test.png'  # For the LSTM
 
 model_params['max_depth'] = 2
 model_params['batch_size'] = 64
@@ -255,17 +257,23 @@ params = {'data_params': data_params,
 # model_name = "PassGPT10"
 
 
-model_name = "ReformerModel"
+#model_name = "ReformerModel"
 #model_name = "LSTM"
-#model_name = "MultinomialNaiveBayes"
+model_name = "MultinomialNaiveBayes"
 model = initialize_model(model_name, params)
-#run_test_for_model(model, params, './datasets/def/most_common_En1.0_1000_split0', comparison_pw)
-#run_test_for_model(model, params, './datasets/def/most_common_En1.0_1000_split0', comparison_pw,
+# run_test_for_model(model, params, './datasets/def/most_common_En1.0_1000_split0', comparison_pw)
+# run_test_for_model(model, params, './datasets/def/most_common_En1.0_1000_split0', comparison_pw,
 #                   save_filename="./models/Reformer_most_common_En1.0_1000_split0")
-run_test_for_model(model, params, './datasets/def/most_common_En1.0_1000_split0', comparison_pw,
-                   training=False, load_filename="./models/Reformer_most_common_En1.0_1000_split0")
+#run_test_for_model(model, params, './datasets/def/most_common_En1.0_1000_split0', comparison_pw,
+#                   training=False, load_filename="./models/Reformer_most_common_En1.0_1000_split0")
 
-#print(run_all_datasets("./datasets/def/", model_name, params, comparison_pw, "./models/"))
+#run_test_for_model(model, params, './datasets/def/most_common_En1.0_10000_split0', comparison_pw,
+#                   training=False, load_filename="./models/LSTMModel_most_common_En1.0_10000_split0")
+
+print(run_all_datasets("./datasets/def/", model_name, params, comparison_pw, "./models/",
+                       use_val=True))
+print(run_all_datasets("./datasets/def/", model_name, params, comparison_pw,
+                       training=False, use_val=True))
 
 # print_dataset(load_from_disk('./datasets/def/most_common_En1.0_10000_split0'))
 # print_dataset(load_from_disk('./datasets/def/most_common_En1.0_10000_split1'))
@@ -305,11 +313,16 @@ grids = {
     }
 }
 
-dataset_files = find_files('datasets/def')
+dataset_files = find_files_in_folder('datasets/def')
 model_name = "MultinomialNaiveBayes"
 print(dataset_files)
 for file in dataset_files:
     results, duration = param_grid_search(model_name, grids[model_name], params, './datasets/def/' + file)
     print(duration)
     print(results)
+
+file = "most_common_En1.0_100000_split0"
+results, duration = param_grid_search(model_name, grids[model_name], params, './datasets/def/' + file)
+print(duration)
+print(results)
 """

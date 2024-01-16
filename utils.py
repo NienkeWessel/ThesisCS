@@ -1,12 +1,13 @@
-from os import path
+from os import path, listdir
 from torch import torch
 from tqdm import tqdm
 from glob import glob
+from d2l import torch as d2l
 
 
 def get_device():
     # device = torch.device('cuda:0') if torch.cuda.is_available() else torch.device("cpu")
-    device = torch.device("cpu")  # NOTE: for now, we fix this to CPU to allow multiprocessing using cpu threads
+    device = d2l.try_gpu()  # NOTE: for now, we fix this to CPU to allow multiprocessing using cpu threads
     return device
 
 
@@ -27,3 +28,12 @@ def chunkify(input_file, config):
                 yield chunk_start, chunk_end - chunk_start, filename
                 if chunk_end > file_end:
                     break
+
+
+def find_files_in_folder(dir):
+    """
+    Lists all files in a directory
+    :param dir: the directory of which the files need to be listed
+    :return: list of files in that directory
+    """
+    return listdir(dir)
