@@ -76,7 +76,7 @@ class PytorchModel(MLModel):
 
         pred = self.transform_pred(pred, y)
         accuracy = BinaryAccuracy().to(device)
-        return torch.mean(correct), accuracy(pred, y)
+        return accuracy(pred, y).tolist()  # torch.mean(correct).numpy()
 
     def calc_recall(self, y, pred):
         y = y.to(device)
@@ -85,7 +85,7 @@ class PytorchModel(MLModel):
             y = self.cut_of_y_to_batchsize(y)
         pred = self.transform_pred(pred, y)
         recall = BinaryRecall().to(device)
-        return recall(pred, y)
+        return recall(pred, y).tolist()
 
     def calc_precision(self, y, pred):
         y = y.to(device)
@@ -94,7 +94,7 @@ class PytorchModel(MLModel):
             y = self.cut_of_y_to_batchsize(y)
         pred = self.transform_pred(pred, y)
         precision = BinaryPrecision().to(device)
-        return precision(pred, y)
+        return precision(pred, y).tolist()
 
     def calc_f1score(self, y, pred):
         y = y.to(device)
@@ -103,10 +103,10 @@ class PytorchModel(MLModel):
             y = self.cut_of_y_to_batchsize(y)
         pred = self.transform_pred(pred, y)
         f1score = BinaryF1Score().to(device)
-        return f1score(pred, y)
+        return f1score(pred, y).tolist()
 
     def load_model(self, filename):
-        self.model.load_state_dict(torch.load(filename))
+        self.model.load_state_dict(torch.load(filename, map_location=torch.device(device)))
 
     def save_model(self, filename):
         torch.save(self.model.state_dict(), filename)
