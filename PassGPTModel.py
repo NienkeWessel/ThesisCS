@@ -211,7 +211,6 @@ class ReformerModel(HuggingfaceModel):
 
     def load_model(self, filename):
         conf = ReformerConfig.from_pretrained(filename)
-        conf.axial_pos_embds = False
         self.model = ReformerForSequenceClassification.from_pretrained(filename, config=conf)
 
     def __str__(self) -> str:
