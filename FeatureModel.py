@@ -7,6 +7,8 @@ from sklearn.naive_bayes import GaussianNB
 from sklearn.naive_bayes import MultinomialNB
 from sklearn.neighbors import KNeighborsClassifier
 
+import matplotlib.pyplot as plt
+
 import skops.io as sio
 
 from MLModel import MLModel
@@ -114,7 +116,7 @@ class DecisionTree(FeatureModel):
         if 'splitter' in model_params:
             splitter = model_params['splitter']
         else:
-            splitter = None
+            splitter = "best"
 
         self.model = tree.DecisionTreeClassifier(criterion=criterion, splitter=splitter, max_depth=max_depth,
                                                  min_samples_split=min_samples_split, min_samples_leaf=min_samples_leaf,
@@ -122,6 +124,11 @@ class DecisionTree(FeatureModel):
 
     def __str__(self) -> str:
         return "DecisionTreeModel"
+    
+    def plot_tree(self, savefile):
+        plt.figure(figsize=(20,20))
+        tree.plot_tree(self.model, node_ids=True, fontsize=15)
+        plt.savefig(f'{savefile}.png', bbox_inches='tight')
 
 
 class KNearestNeighbors(FeatureModel):

@@ -200,6 +200,15 @@ def param_grid_search(model_name, param_grid, params, test_file_name, save_folde
 
     return results, duration
 
+def plot_decision_tree(model, test_file_name, params):
+    dataset = load_from_disk(test_file_name)
+
+    train_data = transform_data(model, dataset['train'], comparison_pw)
+
+    model.train(train_data.X, train_data.y, params=params['train_params'])
+
+    model.plot_tree("tree")
+
 
 # print(find_files_in_folder('datasets'))
 
@@ -270,10 +279,10 @@ model = initialize_model(model_name, params)
 #run_test_for_model(model, params, './datasets/def/most_common_En1.0_10000_split0', comparison_pw,
 #                   training=False, load_filename="./models/LSTMModel_most_common_En1.0_10000_split0")
 
-print(run_all_datasets("./datasets/def/", model_name, params, comparison_pw, "./models/",
-                       use_val=True))
-print(run_all_datasets("./datasets/def/", model_name, params, comparison_pw,
-                       training=False, use_val=True))
+#print(run_all_datasets("./datasets/def/", model_name, params, comparison_pw, "./models/",
+#                       use_val=True))
+#print(run_all_datasets("./datasets/def/", model_name, params, comparison_pw,
+#                       training=False, use_val=True))
 
 # print_dataset(load_from_disk('./datasets/def/most_common_En1.0_10000_split0'))
 # print_dataset(load_from_disk('./datasets/def/most_common_En1.0_10000_split1'))
@@ -284,6 +293,15 @@ print(run_all_datasets("./datasets/def/", model_name, params, comparison_pw,
 run_test_for_model(model, params, f"./datasets/def/{datasetname}", comparison_pw,
                    save_filename=f"./models/PassGPT{datasetname}")
 '''
+
+# ------------------------------- Plotting decision tree -------------------------------
+
+model_name = "DecisionTree"
+model_params['max_depth'] = 4
+model = initialize_model(model_name, params)
+plot_decision_tree(model, './datasets/most_common_En1.0_10000_split0', params)
+
+
 
 # ------------------------------- Parameter grid search -------------------------------
 """
