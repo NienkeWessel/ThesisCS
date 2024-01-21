@@ -59,7 +59,8 @@ def run_test_for_model(model, params, test_file_name, comparison_pw, training=Tr
 
     dataset = load_from_disk(test_file_name)
 
-    train_data = transform_data(model, dataset['train'], comparison_pw)
+    if training:
+        train_data = transform_data(model, dataset['train'], comparison_pw)
     if use_val:
         test_data = transform_data(model, dataset['validation'], comparison_pw)
     else:
@@ -148,17 +149,20 @@ def initialize_model(model_name, params):
 
 
 def run_all_datasets(folder_name, model_name, params, comparison_pw, saving_folder_name=None, use_val=False, training=True,
-                     files=None):
+                     files=None, saved_models_folder=None):
     results = {}
     if files is None:
         files = find_files_in_folder(folder_name)
     for file in files:
         model = initialize_model(model_name, params)
+        if saved_models_folder is not None:
+            model_location = saved_models_folder + str(model) + "_" + file
+            model.load_model(model_location)
         if saving_folder_name is None:
             save_filename = None
         else:
             save_filename = saving_folder_name + str(model) + "_" + file
-        if model_name == "LSTM":
+        if model_name == "LSTM" and training:
             params['train_params']['fig_name'] = "Loss_LSTM_" + file + ".png"
         results[file] = run_test_for_model(model, params, folder_name + file, comparison_pw,
                                            save_filename=save_filename, use_val=use_val,
@@ -167,6 +171,9 @@ def run_all_datasets(folder_name, model_name, params, comparison_pw, saving_fold
     with open(model_name, 'w') as f:
         json.dump(results, f, indent=4)
     return results
+
+def run_tests_on_all_models():
+    return
 
 
 def create_all_models(params):
@@ -249,8 +256,22 @@ data_params['internet'] = internet
 train_params['epochs'] = 2
 train_params['fig_name'] = 'test.png'  # For the LSTM
 
+# Decision Tree parameters
 model_params['max_depth'] = 2
+
+# optimal KNN parameters
+model_params['n_neighbors'] = 50
+model_params['metric'] = 'cosine'
+model_params['weights'] = 'distance'
+
+# --- OR ---
+model_params['metric'] = 'minkowski'
+model_params['p'] = 1
+
+# LSTM parameters
 model_params['batch_size'] = 64
+
+# Huggingface model parameters
 model_params['internet'] = internet
 
 params = {'data_params': data_params,
@@ -267,9 +288,9 @@ params = {'data_params': data_params,
 
 
 #model_name = "ReformerModel"
-#model_name = "LSTM"
-model_name = "MultinomialNaiveBayes"
-model = initialize_model(model_name, params)
+model_name = "LSTM"
+#model_name = "MultinomialNaiveBayes"
+#model = initialize_model(model_name, params)
 # run_test_for_model(model, params, './datasets/def/most_common_En1.0_1000_split0', comparison_pw)
 # run_test_for_model(model, params, './datasets/def/most_common_En1.0_1000_split0', comparison_pw,
 #                   save_filename="./models/Reformer_most_common_En1.0_1000_split0")
@@ -281,8 +302,8 @@ model = initialize_model(model_name, params)
 
 #print(run_all_datasets("./datasets/def/", model_name, params, comparison_pw, "./models/",
 #                       use_val=True))
-#print(run_all_datasets("./datasets/def/", model_name, params, comparison_pw,
-#                       training=False, use_val=True))
+print(run_all_datasets("./datasets/def/", model_name, params, comparison_pw,
+                       training=False, use_val=True, saved_models_folder="./models/", files=['most_common_En1.0_10000_split0']))
 
 # print_dataset(load_from_disk('./datasets/def/most_common_En1.0_10000_split0'))
 # print_dataset(load_from_disk('./datasets/def/most_common_En1.0_10000_split1'))
@@ -295,16 +316,16 @@ run_test_for_model(model, params, f"./datasets/def/{datasetname}", comparison_pw
 '''
 
 # ------------------------------- Plotting decision tree -------------------------------
-
+'''
 model_name = "DecisionTree"
 model_params['max_depth'] = 4
 model = initialize_model(model_name, params)
 plot_decision_tree(model, './datasets/most_common_En1.0_10000_split0', params)
-
+'''
 
 
 # ------------------------------- Parameter grid search -------------------------------
-"""
+'''
 grids = {
     "DecisionTree": {
         'criterion': ('gini', 'entropy', 'log_loss'),
@@ -332,15 +353,16 @@ grids = {
 }
 
 dataset_files = find_files_in_folder('datasets/def')
-model_name = "MultinomialNaiveBayes"
+model_name = "RandomForest"
 print(dataset_files)
-for file in dataset_files:
-    results, duration = param_grid_search(model_name, grids[model_name], params, './datasets/def/' + file)
-    print(duration)
-    print(results)
+#for file in dataset_files:
+#    results, duration = param_grid_search(model_name, grids[model_name], params, './datasets/def/' + file)
+#    print(duration)
+#    print(results)
 
-file = "most_common_En1.0_100000_split0"
+file = "most_common_En0.5Sp0.5_10000_split1"
 results, duration = param_grid_search(model_name, grids[model_name], params, './datasets/def/' + file)
 print(duration)
 print(results)
-"""
+
+'''
