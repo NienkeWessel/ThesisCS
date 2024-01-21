@@ -8,6 +8,7 @@ sns.set(font_scale=1.5)
 import math
 
 from utils import find_files_in_folder
+from utils import grids
 
 lang_map = {
     'En0.5Sp0.5' : "50% English, 50% Spanish",
@@ -111,10 +112,59 @@ def plot_diff_models(folder="ValSetResults/", lang="100% English"):
     plot_data(df, "Scores of models", type_of_plot="model")
 
 
+def collect_csvs(folder_name, model_name):
+    files = find_files_in_folder(folder_name)
+    filtered_files = []
+    for file in files:
+        if model_name in file:
+            filtered_files.append(file)
+    print(filtered_files)
+    return filtered_files
 
+def concat_all_csvs(folder_name, files, model_name):
+    dataframes = []
+    for file in files: 
+        df = pd.read_csv(folder_name + file)
+        df['filename'] = file
+        dataframes.append(df)
+    return pd.concat(dataframes)
+            
+def get_top_hyperparameters(folder_name, model_name, model_type="all"):
+    '''
+    Prints how often settings appear in the top results for every hyperparameter
+    :param folder_name: folder with the csv files with grid search results
+    :param model_name: name of model that we are looking at; needs to be the same as the one in the csv filename and in the grid dict
+    :param model_type: which dataset sizes do you want to consider. Options are: all, large (>50,000), small (<50,000), or an int, which is interpreted as a specific size
+    :return: None (prints the results)
+    '''
+    files = collect_csvs(folder_name, model_name)
+    dataframes = concat_all_csvs(folder_name, files, model_name)
+    dataframes['split'] = dataframes.apply(lambda row: (row['filename'].split("_")[-1]).split(".")[0], axis=1)
+    dataframes['size'] = dataframes.apply(lambda row: int(row['filename'].split("_")[-2]), axis=1)
+    dataframes['languages'] = dataframes.apply(lambda row: lang_map[row['filename'].split("_")[-3]], axis=1)
+
+    top_scores = dataframes[dataframes['rank_test_score'] == 1]
+
+    if model_type == 'large':
+        top_scores = top_scores[top_scores['size'] > 50000]
+    if model_type == 'small':
+        top_scores = top_scores[top_scores['size'] < 50000]
+    if isinstance(model_type, int):
+        top_scores = top_scores[top_scores['size'] == model_type]
+
+
+
+    for parameter in grids[model_name]:
+        print(top_scores['param_' + parameter].value_counts())
+
+
+get_top_hyperparameters("./gridsearchresults/", "DecisionTree", model_type=500000)
+
+'''
 #summary = calc_averages('ValSetResults/NaiveBayes')
 with open('ValSetResults/NaiveBayes', 'r') as f:
     results = json.load(f)
 table = transform_data(results)
 plot_data(table, "Gaussian Naive Bayes")
 plot_diff_models()
+'''

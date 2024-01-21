@@ -325,7 +325,7 @@ plot_decision_tree(model, './datasets/most_common_En1.0_10000_split0', params)
 
 
 # ------------------------------- Parameter grid search -------------------------------
-'''
+
 grids = {
     "DecisionTree": {
         'criterion': ('gini', 'entropy', 'log_loss'),
@@ -351,7 +351,7 @@ grids = {
         'alpha': [0.0, 0.5, 1.0], # no smoothing, Lidstone smoothing, and Laplace smoothing
     }
 }
-
+'''
 dataset_files = find_files_in_folder('datasets/def')
 model_name = "RandomForest"
 print(dataset_files)
