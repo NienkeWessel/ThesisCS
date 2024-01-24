@@ -14,10 +14,11 @@ from DataTransformer import FeatureDataTransformer, PytorchDataTransformer, Pass
 from FeatureModel import FeatureModel
 from PytorchModel import PytorchModel, LSTMModel
 from PassGPTModel import HuggingfaceModel, PassGPT10Model, ReformerModel
-from FeatureModel import RandomForest, DecisionTree, GaussianNaiveBayes, MultinomialNaiveBayes, KNearestNeighbors
+from FeatureModel import RandomForest, DecisionTree, GaussianNaiveBayes, MultinomialNaiveBayes, KNearestNeighbors, \
+    AdaBoost
 
 from utils import find_files_in_folder
-
+from utils import grids
 
 
 def create_dummy_dataset():
@@ -130,9 +131,9 @@ def print_dataset(dataset, split='train'):
 
 
 def initialize_model(model_name, params):
-    if model_name == "PassGPT10":
+    if model_name == "PassGPT":
         return PassGPT10Model(params)
-    if model_name == "ReformerModel":
+    if model_name == "Reformer":
         return ReformerModel(params)
     if model_name == "LSTM":
         return LSTMModel(params)
@@ -146,18 +147,26 @@ def initialize_model(model_name, params):
         return MultinomialNaiveBayes(params)
     if model_name == "KNearestNeighbors":
         return KNearestNeighbors(params)
+    if model_name == "AdaBoost":
+        return AdaBoost(params)
 
 
-def run_all_datasets(folder_name, model_name, params, comparison_pw, saving_folder_name=None, use_val=False, training=True,
-                     files=None, saved_models_folder=None):
+def run_all_datasets(folder_name, model_name, params, comparison_pw, saving_folder_name=None, use_val=False,
+                     training=True, files=None, saved_models_folder=None, filter_part=None):
     results = {}
     if files is None:
         files = find_files_in_folder(folder_name)
+    if filter_part is not None:
+        files = filter_files(files, filter_part)
     for file in files:
-        model = initialize_model(model_name, params)
+
         if saved_models_folder is not None:
-            model_location = saved_models_folder + str(model) + "_" + file
+            model_location = saved_models_folder + model_name + "Model" + "_" + file
+            params['model_loc'] = model_location
+            model = initialize_model(model_name, params)
             model.load_model(model_location)
+        else:
+            model = initialize_model(model_name, params)
         if saving_folder_name is None:
             save_filename = None
         else:
@@ -171,9 +180,6 @@ def run_all_datasets(folder_name, model_name, params, comparison_pw, saving_fold
     with open(model_name, 'w') as f:
         json.dump(results, f, indent=4)
     return results
-
-def run_tests_on_all_models():
-    return
 
 
 def create_all_models(params):
@@ -207,6 +213,7 @@ def param_grid_search(model_name, param_grid, params, test_file_name, save_folde
 
     return results, duration
 
+
 def plot_decision_tree(model, test_file_name, params):
     dataset = load_from_disk(test_file_name)
 
@@ -217,7 +224,13 @@ def plot_decision_tree(model, test_file_name, params):
     model.plot_tree("tree")
 
 
-# print(find_files_in_folder('datasets'))
+def filter_files(files, filter_part):
+    return [file for file in files if filter_part not in file]
+
+
+#files = find_files_in_folder('datasets/def')
+#print(files)
+#print(filter_files(files, "50"))
 
 comparison_pw = load_from_disk("comparison_pw")
 
@@ -259,14 +272,18 @@ train_params['fig_name'] = 'test.png'  # For the LSTM
 # Decision Tree parameters
 model_params['max_depth'] = 2
 
+# optimal AdaBoost parameters
+model_params['n_estimators'] = 200
+model_params['learning_rate'] = 1.0
+
 # optimal KNN parameters
 model_params['n_neighbors'] = 50
 model_params['metric'] = 'cosine'
 model_params['weights'] = 'distance'
 
 # --- OR ---
-model_params['metric'] = 'minkowski'
-model_params['p'] = 1
+#model_params['metric'] = 'minkowski'
+#model_params['p'] = 1
 
 # LSTM parameters
 model_params['batch_size'] = 64
@@ -280,30 +297,32 @@ params = {'data_params': data_params,
 
 # model = DecisionTree(params)
 # model_name = "DecisionTree"
-# model_name = "KNearestNeighbors"
+#model_name = "KNearestNeighbors"
 # model = LSTMModel()
 
 # model = PassGPT10Model(params, load_filename="./models/PassGPT")
-# model_name = "PassGPT10"
+model_name = "PassGPT"
 
-
-#model_name = "ReformerModel"
-model_name = "LSTM"
-#model_name = "MultinomialNaiveBayes"
-#model = initialize_model(model_name, params)
+#model_name = "AdaBoost"
+#model_name = "DecisionTree"
+#model_name = "LSTM"
+# model_name = "MultinomialNaiveBayes"
+# model = initialize_model(model_name, params)
 # run_test_for_model(model, params, './datasets/def/most_common_En1.0_1000_split0', comparison_pw)
 # run_test_for_model(model, params, './datasets/def/most_common_En1.0_1000_split0', comparison_pw,
 #                   save_filename="./models/Reformer_most_common_En1.0_1000_split0")
-#run_test_for_model(model, params, './datasets/def/most_common_En1.0_1000_split0', comparison_pw,
+# run_test_for_model(model, params, './datasets/def/most_common_En1.0_1000_split0', comparison_pw,
 #                   training=False, load_filename="./models/Reformer_most_common_En1.0_1000_split0")
 
-#run_test_for_model(model, params, './datasets/def/most_common_En1.0_10000_split0', comparison_pw,
+# run_test_for_model(model, params, './datasets/def/most_common_En1.0_10000_split0', comparison_pw,
 #                   training=False, load_filename="./models/LSTMModel_most_common_En1.0_10000_split0")
 
 #print(run_all_datasets("./datasets/def/", model_name, params, comparison_pw, "./models/",
-#                       use_val=True))
-print(run_all_datasets("./datasets/def/", model_name, params, comparison_pw,
-                       training=False, use_val=True, saved_models_folder="./models/", files=['most_common_En1.0_10000_split0']))
+#                       use_val=True, files=['most_common_En1.0_1000_split0']))
+print(run_all_datasets("./datasets/def/", model_name, params, comparison_pw, saving_folder_name="./models/",
+                       training=True, use_val=True, files=['most_common_En1.0_1000_split0']))
+#print(run_all_datasets("./datasets/def/", model_name, params, comparison_pw,
+#                       training=True, use_val=True))
 
 # print_dataset(load_from_disk('./datasets/def/most_common_En1.0_10000_split0'))
 # print_dataset(load_from_disk('./datasets/def/most_common_En1.0_10000_split1'))
@@ -323,46 +342,24 @@ model = initialize_model(model_name, params)
 plot_decision_tree(model, './datasets/most_common_En1.0_10000_split0', params)
 '''
 
-
 # ------------------------------- Parameter grid search -------------------------------
 
-grids = {
-    "DecisionTree": {
-        'criterion': ('gini', 'entropy', 'log_loss'),
-        'splitter': ('best', 'random'),
-        'max_depth': [5, 10, 50, 100, 200, 500, None],
-        'min_samples_split': [2, 5, 10, 50, 100, 200, 500],
-        'min_samples_leaf': [1, 5, 10, 50, 100],
-        'class_weight': ('balanced', {0: 1, 1: 5}, {0: 1, 1: 10})},
-    "RandomForest": {
-        'n_estimators': [10, 50, 100, 200],
-        'criterion': ('gini', 'entropy', 'log_loss'),
-        'max_depth': [5, 10, 50, 100, 200, 500, None],
-        'min_samples_split': [2, 5, 10, 50, 100, 200, 500],
-        'min_samples_leaf': [1, 5, 10, 50, 100],
-    },
-    "KNearestNeighbors": {
-        'n_neighbors': [2, 3, 5, 10, 20, 50],
-        'weights': ('uniform', 'distance'),
-        'metric': ('minkowski', 'cosine'),
-        'p': [1, 2, 5, 10],
-    },
-    'MultinomialNaiveBayes': {
-        'alpha': [0.0, 0.5, 1.0], # no smoothing, Lidstone smoothing, and Laplace smoothing
-    }
-}
 '''
-dataset_files = find_files_in_folder('datasets/def')
-model_name = "RandomForest"
-print(dataset_files)
-#for file in dataset_files:
-#    results, duration = param_grid_search(model_name, grids[model_name], params, './datasets/def/' + file)
-#    print(duration)
-#    print(results)
 
-file = "most_common_En0.5Sp0.5_10000_split1"
+dataset_files = find_files_in_folder('datasets/def')
+model_name = "AdaBoost"
+print(dataset_files)
+for file in dataset_files:
+    print(f"Running gridsearch for {file}")
+    results, duration = param_grid_search(model_name, grids[model_name], params, './datasets/def/' + file)
+    print(duration)
+    print(results)
+
+model_name = "RandomForest"
+file = "most_common_En0.5Sp0.5_500000_split1"
 results, duration = param_grid_search(model_name, grids[model_name], params, './datasets/def/' + file)
 print(duration)
 print(results)
+
 
 '''
