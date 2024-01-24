@@ -136,7 +136,7 @@ class PassGPT10Transformer(DataTransformer):
                                                          truncation_side="right", is_split_into_words=True)
 
         self.X = tokenizer(dataset['text'], truncation=True, padding=True, max_length=12)  # return_tensors='pt'
-        print(self.X)
+
 
 class ReformerDataTransformer(DataTransformer):
     def __init__(self, dataset, params) -> None:
@@ -144,14 +144,12 @@ class ReformerDataTransformer(DataTransformer):
         self.y = (torch.nn.functional.one_hot(torch.as_tensor(dataset['label']).to(torch.int64), num_classes=2)).to(
             float)
         encoded_data = self.encode(dataset['text'])
-        print(encoded_data)
         self.X = {
                     'input_ids': encoded_data[0],
                     'attention_mask': encoded_data[1]
         }
         # transform the data structure so that the code that follows will work (i.e. transform into huggingface dataset so that the update in the other file can happen)
-        print(self.X)
-    
+
     def encode(self, list_of_strings, pad_token_id=0):
         '''
         Model does not need a tokenizer, but instead uses fixed encoding and decoding
