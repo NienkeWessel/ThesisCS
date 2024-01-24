@@ -1,14 +1,17 @@
+import pandas as pd
+
 from MLModel import MLModel
+from utils import confusion
+
 from transformers import RobertaTokenizerFast
 import torch
 from abc import ABC, abstractmethod
+
 
 from transformers import TrainingArguments, Trainer
 from transformers import AutoModelForSequenceClassification
 from transformers import ReformerConfig, ReformerForSequenceClassification
 from datasets import Dataset as HuggingfaceDataset
-import evaluate
-
 
 
 class CustomTrainer(Trainer):
@@ -39,20 +42,34 @@ class HuggingfaceModel(MLModel):
             torch.vstack(((pred[:, 0] > pred[:, 1]).unsqueeze(0), (pred[:, 0] <= pred[:, 1]).unsqueeze(0))), 0, 1)
         y_hat = (y_hat >= 0.5).to(y.dtype)
         correct = (y_hat == y).to(torch.float32)
-        return torch.mean(correct)
+        return torch.mean(correct).tolist()
+
+
+    def transform_pred(self, pred, y):
+        y_hat = torch.transpose(
+            torch.vstack(((pred[:, 0] > pred[:, 1]).unsqueeze(0), (pred[:, 0] <= pred[:, 1]).unsqueeze(0))), 0, 1)
+        return (y_hat >= 0.5).to(y.dtype)
+
 
     def calc_recall(self, y, pred):
-        pass
+        pred = torch.tensor(pred.predictions)
+        pred = self.transform_pred(pred, y)
+        tp, fp, tn, fn = confusion(pred, y)
+        return tp / (tp + fn)
 
     def calc_precision(self, y, pred):
-        pass
+        pred = torch.tensor(pred.predictions)
+        pred = self.transform_pred(pred, y)
+        tp, fp, tn, fn = confusion(pred, y)
+        return tp / (tp+fp)
 
     def calc_f1score(self, y, pred):
-        pass
-        '''f1_metric = evaluate.load("f1")
-        results = f1_metric.compute(predictions=pred, references=y)
-        return results
-        '''
+        pred = torch.tensor(pred.predictions)
+        pred = self.transform_pred(pred, y)
+        tp, fp, tn, fn = confusion(pred, y)
+        precision = tp / (tp + fp)
+        recall = tp / (tp + fn)
+        return (2 * precision * recall) / (precision + recall)
 
     def save_model(self, filename):
         #self.trainer.save_model(filename)
@@ -69,11 +86,11 @@ class HuggingfaceModel(MLModel):
 
 
 class PassGPT10Model(HuggingfaceModel):
-    def __init__(self, params, load_filename=None) -> None:
+    def __init__(self, params) -> None:
         super().__init__(params)
         self.internet = params['model_params']['internet']
-        if load_filename is not None:
-            model_loc = load_filename
+        if self.model_loc is not None:
+            model_loc = self.model_loc
         elif self.internet:
             model_loc = "javirandor/passgpt-10characters"
         else:
@@ -126,6 +143,12 @@ class PassGPT10Model(HuggingfaceModel):
         )
 
         self.trainer.train()
+        if 'loss_file' in params:
+            loss_file = params['loss_file']
+        else:
+            loss_file = "lossPassGPT.csv"
+        loss_history = pd.DataFrame(self.trainer.state.log_history)
+        loss_history.to_csv(loss_file)
 
     def predict(self, X):
         dataset = HuggingfaceDataset.from_dict(X)
@@ -136,6 +159,13 @@ class PassGPT10Model(HuggingfaceModel):
         self.tokenizer.save_pretrained(filename)
 
     def load_model(self, filename):
+        ''' WARNING! Does not seem to work properly; loaded model does not override the model created
+        at initialization of the object completely
+
+        :param filename:
+        :return:
+        '''
+        return
         self.model = AutoModelForSequenceClassification.from_pretrained(filename, num_labels=2)
         self.tokenizer = RobertaTokenizerFast.from_pretrained(filename,
                                                               max_len=12, padding="max_length",
@@ -156,11 +186,11 @@ class PassGPT10Model(HuggingfaceModel):
         
 class ReformerModel(HuggingfaceModel):
     # NB: https://stackoverflow.com/questions/68742863/error-while-trying-to-fine-tune-the-reformermodelwithlmhead-google-reformer-enw
-    def __init__(self, params, load_filename=None) -> None:
+    def __init__(self, params) -> None:
         super().__init__(params)
         self.internet = params['model_params']['internet']
-        if load_filename is not None:
-            model_loc = load_filename
+        if self.model_loc is not None:
+            model_loc = self.model_loc
         elif self.internet:
             model_loc = "google/reformer-enwik8"
         else:
@@ -210,6 +240,13 @@ class ReformerModel(HuggingfaceModel):
         return self.trainer.predict(dataset)
 
     def load_model(self, filename):
+        ''' WARNING! Does not seem to work properly; loaded model does not override the model created
+        at initialization of the object completely
+
+        :param filename:
+        :return:
+        '''
+        return
         conf = ReformerConfig.from_pretrained(filename)
         self.model = ReformerForSequenceClassification.from_pretrained(filename, config=conf)
 
