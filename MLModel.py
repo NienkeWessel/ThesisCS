@@ -5,6 +5,10 @@ class MLModel(ABC):
     def __init__(self, params) -> None:
         self.model = None
         self.params = params
+        if 'model_loc' in self.params:
+            self.model_loc = self.params['model_loc']
+        else:
+            self.model_loc = None
 
     @abstractmethod
     def __str__(self) -> str:
