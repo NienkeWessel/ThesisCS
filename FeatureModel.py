@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from sklearn.metrics import accuracy_score, recall_score, precision_score, f1_score
 
 from sklearn import tree
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier
 from sklearn.naive_bayes import GaussianNB
 from sklearn.naive_bayes import MultinomialNB
 from sklearn.neighbors import KNeighborsClassifier
@@ -52,7 +52,7 @@ class RandomForest(FeatureModel):
         super().__init__(params)
         model_params = self.params['model_params']
         if 'n_estimators' in model_params:
-            n_estimators = model_params['criterion']
+            n_estimators = model_params['n_estimators']
         else:
             n_estimators = 100
         if 'criterion' in model_params:
@@ -159,7 +159,7 @@ class KNearestNeighbors(FeatureModel):
         self.model = KNeighborsClassifier(n_neighbors=n_neighbors, weights=weights, p=p, metric=metric)
 
     def __str__(self) -> str:
-        return "KNearestNeighbors"
+        return "KNearestNeighborsModel"
 
 class GaussianNaiveBayes(FeatureModel):
     def __init__(self, params) -> None:
@@ -183,3 +183,21 @@ class MultinomialNaiveBayes(FeatureModel):
 
     def __str__(self) -> str:
         return "MultinomialNBModel"
+
+class AdaBoost(FeatureModel):
+    def __init__(self, params) -> None:
+        super().__init__(params)
+        model_params = self.params['model_params']
+        if 'n_estimators' in model_params:
+            n_estimators = model_params['n_estimators']
+        else:
+            n_estimators = 50
+        if 'learning_rate' in model_params:
+            learning_rate = model_params['learning_rate']
+        else:
+            learning_rate = 1.0
+
+        self.model = AdaBoostClassifier(n_estimators=n_estimators, learning_rate=learning_rate, random_state=42)
+
+    def __str__(self) -> str:
+        return "AdaBoostModel"
