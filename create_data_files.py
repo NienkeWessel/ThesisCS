@@ -41,6 +41,31 @@ def read_passwords(filename, comp_nr_lines, nr_lines, comp_pw=None):
 
     return passwords, comparison_pw
 
+def read_long_passwords(filename, min_length=16, skip=510000, save=True):
+    passwords = []
+    with open(filename, "r") as file:
+        for i in range(0, skip):
+            next(file)
+        while True:
+            try:
+                pw = next(file).strip()
+                if len(pw) >= min_length:
+                    passwords.append(pw)
+            except: 
+                break
+    
+    pw_dataset = Dataset.from_dict({
+        'text': passwords,
+        'label': np.ones(len(passwords))
+    })
+
+    if save:
+        data = DatasetDict({
+                'test': pw_dataset,
+            })
+        data.save_to_disk(f"long_passwords_{min_length}")
+    
+    return pw_dataset
 
 def make_languages_string(languages, lang_split):
     s = ""
@@ -121,9 +146,12 @@ def load_data_from_file(filename):
         return json.load(f)
 
 
-pw_filename = "10-million-password-list-top-1000000.txt"
+#pw_filename = "10-million-password-list-top-1000000.txt"
+pw_filename = "xato-net-10-million-passwords.txt"
 comp_nr_lines = 10000
+read_long_passwords(pw_filename, min_length=16)
 
+'''
 nr_lines_list = [1000, 10000, 100000, 500000]
 
 # comparison_pw = create_comparison_pw_set(pw_filename, comp_nr_lines=comp_nr_lines, save=True)
@@ -151,3 +179,4 @@ for nr_lines in nr_lines_list:
 
 #s = make_languages_string(languages, lang_split)
 #print(s)
+'''
