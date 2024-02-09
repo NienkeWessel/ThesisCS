@@ -232,7 +232,7 @@ def extract_model_name_from_file_name(file_name):
     return file_name.split("_")[0][:-5]
 
 
-def run_long_password_test(models_folder_name, params, dataset_folder_name, comparison_pw):
+def run_other_tests(models_folder_name, params, dataset_folder_name, comparison_pw):
     results = {}
     paths_to_models = find_files_in_folder(models_folder_name)
     model_types = [extract_model_name_from_file_name(filename) for filename in paths_to_models]
@@ -356,7 +356,7 @@ model_name = "PassGPT"
 
 # datasetname=sys.argv[1]
 
-run_long_password_test('./models/', params, './datasets/long_password_datasets/', comparison_pw, )
+run_other_tests('./models/', params, './datasets/other_datasets/', comparison_pw, )
 
 '''
 run_test_for_model(model, params, f"./datasets/def/{datasetname}", comparison_pw,
