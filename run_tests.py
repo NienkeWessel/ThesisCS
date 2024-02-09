@@ -228,6 +228,33 @@ def filter_files(files, filter_part):
     return [file for file in files if filter_part not in file]
 
 
+def extract_model_name_from_file_name(file_name):
+    return file_name.split("_")[0][:-5]
+
+
+def run_long_password_test(models_folder_name, params, dataset_folder_name, comparison_pw):
+    results = {}
+    paths_to_models = find_files_in_folder(models_folder_name)
+    model_types = [extract_model_name_from_file_name(filename) for filename in paths_to_models]
+    datasets = find_files_in_folder(dataset_folder_name)
+
+    for i, path in enumerate(paths_to_models):
+        model_location = models_folder_name + path
+        model = initialize_model(model_types[i], params)
+        model.load_model(model_location)
+
+        for dataset in datasets: 
+            dataset_path = dataset_folder_name + dataset
+            results[dataset + "+" + path] = run_test_for_model(model, params, dataset_path, comparison_pw,
+                                           use_val=False, training=False)
+    
+
+    print(results)
+    with open(model_name, 'w') as f:
+        json.dump(results, f, indent=4)
+    return results
+
+
 #files = find_files_in_folder('datasets/def')
 #print(files)
 #print(filter_files(files, "50"))
@@ -319,8 +346,8 @@ model_name = "PassGPT"
 
 #print(run_all_datasets("./datasets/def/", model_name, params, comparison_pw, "./models/",
 #                       use_val=True, files=['most_common_En1.0_1000_split0']))
-print(run_all_datasets("./datasets/def/", model_name, params, comparison_pw, saving_folder_name="./models/",
-                       training=True, use_val=True, files=['most_common_En1.0_1000_split0']))
+#print(run_all_datasets("./datasets/def/", model_name, params, comparison_pw, saving_folder_name="./models/",
+#                       training=True, use_val=True, files=['most_common_En1.0_1000_split0']))
 #print(run_all_datasets("./datasets/def/", model_name, params, comparison_pw,
 #                       training=True, use_val=True))
 
@@ -328,6 +355,8 @@ print(run_all_datasets("./datasets/def/", model_name, params, comparison_pw, sav
 # print_dataset(load_from_disk('./datasets/def/most_common_En1.0_10000_split1'))
 
 # datasetname=sys.argv[1]
+
+run_long_password_test('./models/', params, './datasets/long_password_datasets/', comparison_pw, )
 
 '''
 run_test_for_model(model, params, f"./datasets/def/{datasetname}", comparison_pw,
