@@ -146,10 +146,26 @@ def load_data_from_file(filename):
         return json.load(f)
 
 
+def create_password_list_from_file(source_filename, goal_filename, skip=510000, max=1000000):
+    passwords = []
+    with open(source_filename, "r") as file:
+        for i in range(0, skip):
+            next(file)
+        while True:
+            try:
+                pw = next(file)
+                passwords.append(pw)
+            except: 
+                break
+    with open(goal_filename, 'w') as file:
+        file.writelines(passwords)
+
+
 #pw_filename = "10-million-password-list-top-1000000.txt"
 pw_filename = "xato-net-10-million-passwords.txt"
 comp_nr_lines = 10000
-read_long_passwords(pw_filename, min_length=16)
+#read_long_passwords(pw_filename, min_length=32)
+#create_password_list_from_file(pw_filename, "random_other_pws.txt")
 
 '''
 nr_lines_list = [1000, 10000, 100000, 500000]
