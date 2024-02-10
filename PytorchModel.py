@@ -50,17 +50,17 @@ class PytorchModel(MLModel):
                 results = temp_res
             else:
                 results = torch.cat((results, temp_res), 0)
-        return results
+        return self.transform_pred(results)
 
     def cut_of_y_to_batchsize(self, y):
         nr_batches = int(len(y) / self.batch_size)
         y = y[:self.batch_size * nr_batches]
         return y
 
-    def transform_pred(self, pred, y):
+    def transform_pred(self, pred):
         y_hat = torch.transpose(
             torch.vstack(((pred[:, 0] > pred[:, 1]).unsqueeze(0), (pred[:, 0] <= pred[:, 1]).unsqueeze(0))), 0, 1)
-        return (y_hat >= 0.5).to(y.dtype)
+        return (y_hat).to(torch.float64)
 
 
     def calc_accuracy(self, y, pred):
@@ -71,11 +71,7 @@ class PytorchModel(MLModel):
         if len(y) != len(pred):
             y = self.cut_of_y_to_batchsize(y)
 
-        y_hat = torch.transpose(
-            torch.vstack(((pred[:, 0] > pred[:, 1]).unsqueeze(0), (pred[:, 0] <= pred[:, 1]).unsqueeze(0))), 0, 1)
-        y_hat = (y_hat >= 0.5).to(y.dtype)
-
-        correct = (y_hat == y).to(torch.float32)
+        correct = (pred == y).to(torch.float32)
         return torch.mean(correct).tolist()
 
     def calc_recall(self, y, pred):
@@ -83,7 +79,6 @@ class PytorchModel(MLModel):
         pred = pred.to(device)
         if len(y) != len(pred):
             y = self.cut_of_y_to_batchsize(y)
-        pred = self.transform_pred(pred, y)
         tp, fp, tn, fn = confusion(pred, y)
         return tp / (tp + fn)
 
@@ -92,7 +87,6 @@ class PytorchModel(MLModel):
         pred = pred.to(device)
         if len(y) != len(pred):
             y = self.cut_of_y_to_batchsize(y)
-        pred = self.transform_pred(pred, y)
         tp, fp, tn, fn = confusion(pred, y)
         return tp / (tp+fp)
 
@@ -101,11 +95,13 @@ class PytorchModel(MLModel):
         pred = pred.to(device)
         if len(y) != len(pred):
             y = self.cut_of_y_to_batchsize(y)
-        pred = self.transform_pred(pred, y)
         tp, fp, tn, fn = confusion(pred, y)
         precision = tp / (tp + fp)
         recall = tp / (tp + fn)
-        return (2 * precision * recall) / (precision + recall)
+        if precision == 0 and recall == 0:
+            return 0
+        else:
+            return (2 * precision * recall) / (precision + recall)
 
     def load_model(self, filename):
         self.model.load_state_dict(torch.load(filename, map_location=torch.device(device)))
