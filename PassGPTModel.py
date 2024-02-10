@@ -1,6 +1,7 @@
 import pandas as pd
 
 from MLModel import MLModel
+from PytorchModel import NeuralNetworkModel
 from utils import confusion
 
 from transformers import RobertaTokenizerFast
@@ -25,7 +26,7 @@ class CustomTrainer(Trainer):
         return (loss, outputs) if return_outputs else loss
 
 
-class HuggingfaceModel(MLModel):
+class HuggingfaceModel(NeuralNetworkModel):
     def __init__(self, params) -> None:
         super().__init__(params)
         self.trainer = None
@@ -35,41 +36,6 @@ class HuggingfaceModel(MLModel):
 
     def predict(self, X):
         pass
-
-    def calc_accuracy(self, y, pred):
-        pred = torch.tensor(pred.predictions)
-        y_hat = torch.transpose(
-            torch.vstack(((pred[:, 0] > pred[:, 1]).unsqueeze(0), (pred[:, 0] <= pred[:, 1]).unsqueeze(0))), 0, 1)
-        y_hat = (y_hat >= 0.5).to(y.dtype)
-        correct = (y_hat == y).to(torch.float32)
-        return torch.mean(correct).tolist()
-
-
-    def transform_pred(self, pred, y):
-        y_hat = torch.transpose(
-            torch.vstack(((pred[:, 0] > pred[:, 1]).unsqueeze(0), (pred[:, 0] <= pred[:, 1]).unsqueeze(0))), 0, 1)
-        return (y_hat >= 0.5).to(y.dtype)
-
-
-    def calc_recall(self, y, pred):
-        pred = torch.tensor(pred.predictions)
-        pred = self.transform_pred(pred, y)
-        tp, fp, tn, fn = confusion(pred, y)
-        return tp / (tp + fn)
-
-    def calc_precision(self, y, pred):
-        pred = torch.tensor(pred.predictions)
-        pred = self.transform_pred(pred, y)
-        tp, fp, tn, fn = confusion(pred, y)
-        return tp / (tp+fp)
-
-    def calc_f1score(self, y, pred):
-        pred = torch.tensor(pred.predictions)
-        pred = self.transform_pred(pred, y)
-        tp, fp, tn, fn = confusion(pred, y)
-        precision = tp / (tp + fp)
-        recall = tp / (tp + fn)
-        return (2 * precision * recall) / (precision + recall)
 
     def save_model(self, filename):
         #self.trainer.save_model(filename)
@@ -152,7 +118,8 @@ class PassGPT10Model(HuggingfaceModel):
 
     def predict(self, X):
         dataset = HuggingfaceDataset.from_dict(X)
-        return self.trainer.predict(dataset)
+        self.complete_prediction = self.trainer.predict(dataset)
+        return self.transform_pred(torch.tensor(self.complete_prediction.predictions))
 
     def save_model(self, filename):
         super().save_model(filename)

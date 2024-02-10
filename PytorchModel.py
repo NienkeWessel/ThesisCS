@@ -10,48 +10,10 @@ import matplotlib.pyplot as plt
 
 device = d2l.try_gpu()
 
-
-class PytorchModel(MLModel):
+class NeuralNetworkModel(MLModel):
     def __init__(self, params) -> None:
         super().__init__(params)
-        try:
-            self.batch_size = self.params['model_params']['batch_size']
-        except KeyError:
-            raise KeyError("Not all model parameters have been specified as needed, check if batch_size is "
-                           "specified properly")
-
-    def train(self, X, y, params=None):
-        if 'epochs' in params:
-            epochs = params['epochs']
-        else:
-            epochs = 1
-        if 'fig_name' in params:
-            fig_name = params['fig_name']
-        else:
-            fig_name = "loss.png"
-        train_onesplit(self.model, X, y, epochs=epochs)
-
-        # save the plot made in the train function in the train.py file
-        plt.savefig(fig_name)
-
-    def predict(self, X):
-        test = CharacterDataset(X)
-        train_loader = torch.utils.data.DataLoader(test, batch_size=self.batch_size, shuffle=False, drop_last=True)
-        self.model.train(False)
-
-        self.model = self.model.to(device)
-
-        results = None
-        for i, x in enumerate(train_loader):
-            x = x.to(device)
-            with torch.no_grad():
-                temp_res = self.model(x)
-            if results is None:
-                results = temp_res
-            else:
-                results = torch.cat((results, temp_res), 0)
-        return self.transform_pred(results)
-
+    
     def cut_of_y_to_batchsize(self, y):
         nr_batches = int(len(y) / self.batch_size)
         y = y[:self.batch_size * nr_batches]
@@ -102,6 +64,48 @@ class PytorchModel(MLModel):
             return 0
         else:
             return (2 * precision * recall) / (precision + recall)
+
+
+class PytorchModel(NeuralNetworkModel):
+    def __init__(self, params) -> None:
+        super().__init__(params)
+        try:
+            self.batch_size = self.params['model_params']['batch_size']
+        except KeyError:
+            raise KeyError("Not all model parameters have been specified as needed, check if batch_size is "
+                           "specified properly")
+
+    def train(self, X, y, params=None):
+        if 'epochs' in params:
+            epochs = params['epochs']
+        else:
+            epochs = 1
+        if 'fig_name' in params:
+            fig_name = params['fig_name']
+        else:
+            fig_name = "loss.png"
+        train_onesplit(self.model, X, y, epochs=epochs)
+
+        # save the plot made in the train function in the train.py file
+        plt.savefig(fig_name)
+
+    def predict(self, X):
+        test = CharacterDataset(X)
+        train_loader = torch.utils.data.DataLoader(test, batch_size=self.batch_size, shuffle=False, drop_last=True)
+        self.model.train(False)
+
+        self.model = self.model.to(device)
+
+        results = None
+        for i, x in enumerate(train_loader):
+            x = x.to(device)
+            with torch.no_grad():
+                temp_res = self.model(x)
+            if results is None:
+                results = temp_res
+            else:
+                results = torch.cat((results, temp_res), 0)
+        return self.transform_pred(results)
 
     def load_model(self, filename):
         self.model.load_state_dict(torch.load(filename, map_location=torch.device(device)))
