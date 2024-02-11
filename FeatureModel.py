@@ -6,6 +6,8 @@ from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier
 from sklearn.naive_bayes import GaussianNB
 from sklearn.naive_bayes import MultinomialNB
 from sklearn.neighbors import KNeighborsClassifier
+from sklearn.feature_extraction.text import CountVectorizer
+
 
 import matplotlib.pyplot as plt
 
@@ -17,6 +19,14 @@ from MLModel import MLModel
 class FeatureModel(MLModel):
     def __init__(self, params) -> None:
         super().__init__(params)
+        ngrams = params['data_params']['ngrams']
+        ngram_range = params['data_params']['ngram_range']
+
+        if ngrams:
+            self.vectorizer = CountVectorizer(analyzer='char', lowercase=False, ngram_range=ngram_range, min_df=10)
+        else: 
+            self.vectorizer = None
+
 
     @abstractmethod
     def __str__(self) -> str:

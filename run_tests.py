@@ -33,7 +33,7 @@ def create_dummy_dataset():
     return dataset
 
 
-def transform_data(model, dataset, comparison_pw):
+def transform_data(model, dataset, comparison_pw, split):
     """
     Transforms the data by using a DataTransformer that fits the model type
     :param model: the model the dataset is for
@@ -42,7 +42,7 @@ def transform_data(model, dataset, comparison_pw):
     :return: the transformed data in a DataTransformer object
     """
     if isinstance(model, FeatureModel):  # Check if we are dealing with a feature model
-        return FeatureDataTransformer(dataset, model.params['data_params'], comparison_pw['text'])
+        return FeatureDataTransformer(dataset, model.params['data_params'], comparison_pw['text'], model.vectorizer, split=split)
     elif isinstance(model, PytorchModel):
         return PytorchDataTransformer(dataset, model.params['data_params'])
     elif isinstance(model, PassGPT10Model):
@@ -54,18 +54,18 @@ def transform_data(model, dataset, comparison_pw):
 
 
 def run_test_for_model(model, params, test_file_name, comparison_pw, training=True, load_filename=None,
-                       save_filename=None, use_val=False):
+                       save_filename=None, use_val=False, save_prediction_results=False):
     print(f"Running test on model {model} with file {test_file_name}")
     metrics = {}
 
     dataset = load_from_disk(test_file_name)
 
     if training:
-        train_data = transform_data(model, dataset['train'], comparison_pw)
+        train_data = transform_data(model, dataset['train'], comparison_pw, 'training')
     if use_val:
-        test_data = transform_data(model, dataset['validation'], comparison_pw)
+        test_data = transform_data(model, dataset['validation'], comparison_pw, 'validation')
     else:
-        test_data = transform_data(model, dataset['test'], comparison_pw)
+        test_data = transform_data(model, dataset['test'], comparison_pw, 'test')
 
     if load_filename is not None:
         model.load_model(load_filename)
@@ -79,6 +79,11 @@ def run_test_for_model(model, params, test_file_name, comparison_pw, training=Tr
         model.save_model(save_filename)
 
     predictions = model.predict(test_data.X)
+
+    if save_prediction_results:
+        pass
+        # if nonexistent, build df with words, labels and predictions
+        # if existent, load from csv and add column, save again
 
     accuracy = model.calc_accuracy(test_data.y, predictions)
     print(f"Accuracy: {accuracy}")
@@ -282,25 +287,36 @@ training_params: parameters that determine how training should proceed, such as 
 All these can be specified in a params dictionary, with subdictionaries for the aforementioned three types. 
 The exact set of parameters recognized differs per model and should be specified in the model documentation. 
 """
-internet = False
+internet = True
 
 data_params = {}
 model_params = {}
 train_params = {}
 
 data_params['levenshtein'] = False
-data_params['ngrams'] = False
+data_params['ngrams'] = True
 data_params['ngram_range'] = (1, 2)
 data_params['internet'] = internet
 
 train_params['epochs'] = 2
 train_params['fig_name'] = 'test.png'  # For the LSTM
 
+# optimal multinomial NB parameters
+model_params['alpha'] = 1.0
+
 # Decision Tree parameters
-model_params['max_depth'] = 2
+model_params['max_depth'] = None
+model_params['weight'] = 'balanced'
+model_params['min_samples_split'] = 10
+model_params['min_samples_leaf'] = 1
+model_params['criterion'] = 'gini'
+
+# optimal RF parameters
+model_params['n_estimators'] = 50 #watch out with same name parameter for AdaBoost
+# rest of parameters is the same as DT
 
 # optimal AdaBoost parameters
-model_params['n_estimators'] = 200
+#model_params['n_estimators'] = 200 #comment out when using RF
 model_params['learning_rate'] = 1.0
 
 # optimal KNN parameters
@@ -323,19 +339,21 @@ params = {'data_params': data_params,
           'model_params': model_params}
 
 # model = DecisionTree(params)
-# model_name = "DecisionTree"
+model_name = "DecisionTree"
 #model_name = "KNearestNeighbors"
 # model = LSTMModel()
 
 # model = PassGPT10Model(params, load_filename="./models/PassGPT")
-model_name = "PassGPT"
+#model_name = "PassGPT"
 
 #model_name = "AdaBoost"
 #model_name = "DecisionTree"
 #model_name = "LSTM"
 # model_name = "MultinomialNaiveBayes"
-# model = initialize_model(model_name, params)
-# run_test_for_model(model, params, './datasets/def/most_common_En1.0_1000_split0', comparison_pw)
+#model = initialize_model(model_name, params)
+#run_test_for_model(model, params, './datasets/def/most_common_En1.0_500000_split1', comparison_pw)
+#print(model.model.get_depth())
+#model.plot_tree("Tree_most_common_En1.0_500000_split1")
 # run_test_for_model(model, params, './datasets/def/most_common_En1.0_1000_split0', comparison_pw,
 #                   save_filename="./models/Reformer_most_common_En1.0_1000_split0")
 # run_test_for_model(model, params, './datasets/def/most_common_En1.0_1000_split0', comparison_pw,
@@ -346,8 +364,8 @@ model_name = "PassGPT"
 
 #print(run_all_datasets("./datasets/def/", model_name, params, comparison_pw, "./models/",
 #                       use_val=True, files=['most_common_En1.0_1000_split0']))
-#print(run_all_datasets("./datasets/def/", model_name, params, comparison_pw, saving_folder_name="./models/",
-#                       training=True, use_val=True, files=['most_common_En1.0_1000_split0']))
+print(run_all_datasets("./datasets/def/", model_name, params, comparison_pw, saving_folder_name="./models/",
+                       training=True, use_val=True, files=['most_common_En1.0_1000_split2']))
 #print(run_all_datasets("./datasets/def/", model_name, params, comparison_pw,
 #                       training=True, use_val=True))
 
@@ -356,7 +374,7 @@ model_name = "PassGPT"
 
 # datasetname=sys.argv[1]
 
-run_other_tests('./models/', params, './datasets/other_datasets/', comparison_pw, )
+#run_other_tests('./models/', params, './datasets/other_datasets/', comparison_pw, )
 
 '''
 run_test_for_model(model, params, f"./datasets/def/{datasetname}", comparison_pw,
@@ -373,10 +391,10 @@ plot_decision_tree(model, './datasets/most_common_En1.0_10000_split0', params)
 
 # ------------------------------- Parameter grid search -------------------------------
 
-'''
 
+'''
 dataset_files = find_files_in_folder('datasets/def')
-model_name = "AdaBoost"
+model_name = "MultinomialNaiveBayes"
 print(dataset_files)
 for file in dataset_files:
     print(f"Running gridsearch for {file}")
@@ -384,11 +402,11 @@ for file in dataset_files:
     print(duration)
     print(results)
 
+
 model_name = "RandomForest"
 file = "most_common_En0.5Sp0.5_500000_split1"
 results, duration = param_grid_search(model_name, grids[model_name], params, './datasets/def/' + file)
 print(duration)
 print(results)
-
-
 '''
+

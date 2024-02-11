@@ -26,7 +26,7 @@ class DataTransformer(ABC):
 
 
 class FeatureDataTransformer(DataTransformer):
-    def __init__(self, dataset, params, comparison_pw) -> None:
+    def __init__(self, dataset, params, comparison_pw, vectorizer, split='training') -> None:
         """ - base_features: simple feature set such as
         the length of the word and amount of characters from different character sets - levenshtein: calculate the
         Levenshtein distance to most common passwords - ngrams: ngram of characters as features - ngram_range:
@@ -35,16 +35,15 @@ class FeatureDataTransformer(DataTransformer):
         super().__init__(dataset, params)
 
         levenshtein = params['levenshtein']
-        ngrams = params['ngrams']
-        ngram_range = params['ngram_range']
+
 
         features = [self.counts(word, comparison_pw, levenshtein=levenshtein) for word in dataset['text']]
 
-        if ngrams:
-            vectorizer = CountVectorizer(analyzer='char', lowercase=False, ngram_range=ngram_range, min_df=10)
-            ngram_features = vectorizer.fit_transform(
-                dataset[
-                    'text'])  # CountVectorizer returns a sparse matrix. This needs to be converted into a dense matrix in order to be able to concatenate it.
+        if not (vectorizer is None):
+            if split == 'training':
+                vectorizer.fit(dataset['text'])
+            
+            ngram_features = vectorizer.transform(dataset['text'])  # CountVectorizer returns a sparse matrix. This needs to be converted into a dense matrix in order to be able to concatenate it.
             features = np.concatenate((np.array(features), ngram_features.toarray()), axis=1)  # link features and words
 
         #total = np.array(list(zip(dataset['text'], features)), dtype=object)
