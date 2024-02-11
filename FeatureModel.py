@@ -8,6 +8,7 @@ from sklearn.naive_bayes import MultinomialNB
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.feature_extraction.text import CountVectorizer
 
+import pickle
 
 import matplotlib.pyplot as plt
 
@@ -52,9 +53,15 @@ class FeatureModel(MLModel):
 
     def save_model(self, filename):
         sio.dump(self.model, filename)
+        if not (self.vectorizer is None):
+            with open(filename + '_vectorizer.pk', 'wb') as fin:
+                pickle.dump(self.vectorizer, fin)
 
     def load_model(self, filename):
         self.model = sio.load(filename)
+        if self.params['data_params']['ngrams']:
+            with open(filename + '_vectorizer.pk', 'rb') as fin:
+                self.vectorizer = pickle.load(fin)
 
 
 class RandomForest(FeatureModel):
