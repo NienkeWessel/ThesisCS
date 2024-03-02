@@ -88,19 +88,23 @@ def create_comparison_pw_set(filename, comp_nr_lines=10000, save=False):
     return comparison_pw
 
 
-def load_data(pw_filename, languages, lang_files, lang_split, comp_nr_lines, nr_lines, save=False, mode='most_common',
-              train_split=0.7, test_val_ratio=0.5, nr_of_sets=3, comp_pw=None):
+def read_passwords_and_words(pw_filename, languages, lang_files, lang_split, comp_nr_lines, nr_lines, comp_pw=None):
     passwords, _ = read_passwords(pw_filename, comp_nr_lines, nr_lines, comp_pw)
     words = set()
     for language in languages:
         if language in lang_split:
             nr_lines_per_lang = int(lang_split[language] * nr_lines)
             words = read_words_most_common(lang_files[language], nr_lines_per_lang, words)
-    # print(words)
     print("Nr of passwords: {}\nNr of words: {}".format(len(passwords), len(words)))
 
     all_words = passwords + list(words)
     labels = (np.concatenate((np.ones(len(passwords)), np.zeros(len(words))), axis=0)).tolist()
+    return all_words, labels
+
+def load_data(pw_filename, languages, lang_files, lang_split, comp_nr_lines, nr_lines, save=False, mode='most_common',
+              train_split=0.7, test_val_ratio=0.5, nr_of_sets=3, comp_pw=None):
+    
+    all_words, labels = read_passwords_and_words(pw_filename, languages, lang_files, lang_split, comp_nr_lines, nr_lines, comp_pw=comp_pw)
 
     random_state = 42
 
@@ -161,38 +165,76 @@ def create_password_list_from_file(source_filename, goal_filename, skip=510000, 
         file.writelines(passwords)
 
 
+def create_lang_testset(password_file, languages, lang_files, lang_split, nr_lines, mode="most_common", save=False, comp_pw=None):
+    all_words, labels = read_passwords_and_words(password_file, languages, lang_files, lang_split, 0, nr_lines, comp_pw=comp_pw)
+
+    dataset = Dataset.from_dict({
+        'text': all_words,
+        'label': labels
+    })
+
+    if save:
+        save_filename = mode + '_' + make_languages_string(languages, lang_split) + '_' + str(nr_lines)
+        data = DatasetDict({
+                'test': dataset,
+            })
+        data.save_to_disk(save_filename)
+    return
+
+def read_usernames(username_file, nr_lines, save=False, comp_pw=None):
+    usernames, _ = read_passwords(username_file, 0, nr_lines, comp_pw=None)
+
+    dataset = Dataset.from_dict({
+        'text': usernames,
+        'label': np.zeros(len(usernames))
+    })
+
+    if save:
+        save_filename = 'Usernames_' + str(nr_lines)
+        data = DatasetDict({
+                'test': dataset,
+            })
+        data.save_to_disk(save_filename)
+    return
+
 #pw_filename = "10-million-password-list-top-1000000.txt"
 pw_filename = "xato-net-10-million-passwords.txt"
+username_file = "xato-net-10-million-usernames.txt"
 comp_nr_lines = 10000
 #read_long_passwords(pw_filename, min_length=32)
 #create_password_list_from_file(pw_filename, "random_other_pws.txt")
 
-'''
-nr_lines_list = [1000, 10000, 100000, 500000]
+
+nr_lines_list = [50]#[1000, 10000, 100000, 500000]
 
 # comparison_pw = create_comparison_pw_set(pw_filename, comp_nr_lines=comp_nr_lines, save=True)
 
 comparison_pw = load_from_disk("comparison_pw")
 
-languages = ['English', 'Spanish', 'Dutch', 'Arabic', 'Chinese']
+languages = ['English', 'Spanish', 'Dutch', 'Arabic', 'Chinese', 'Russian', 'Turkish', 'Vietnamese', 'Italian']
 lang_files = {
     'English': "eng_news_2020_1M-words.txt",
     'Spanish': "spa_news_2022_1M-words.txt",
     'Dutch': "nld_news_2022_1M-words.txt",
     'Arabic': "ara_news_2022_1M-words.txt",
-    'Russian': "rus_news_2022_1M-words.txt"
+    'Russian': "rus_news_2022_1M-words.txt",
+    'Turkish': "tur_news_2022_1M-words.txt",
+    'Vietnamese': "vie_news_2022_1M-words.txt",
+    'Italian': "ita_news_2023_1M-words.txt"
 }
 lang_split = {
-#    'English': 0.5,
+#    'English': 1.0,
 #    'Spanish': 0.5,
-#    'Dutch': 0.5,
+#    'Dutch': 1.0,
     'Arabic': 1.0,
-#    'Russian': 0.0
+#    'Russian': 1.0,
+#    'Turkish': 1.0,
+#    'Vietnamese': 1.0,
+#    'Italian' : 1.0,
 }
 
-for nr_lines in nr_lines_list:
-    load_data(pw_filename, languages, lang_files, lang_split, 0, nr_lines, save=True, comp_pw=comparison_pw)
+#for nr_lines in nr_lines_list:
+#    load_data(pw_filename, languages, lang_files, lang_split, 0, nr_lines, save=True, comp_pw=comparison_pw)
 
-#s = make_languages_string(languages, lang_split)
-#print(s)
-'''
+create_lang_testset("random_other_pws.txt", languages, lang_files, lang_split, 10000, save=True, comp_pw=comparison_pw)
+#read_usernames(username_file, 10000, save=True, comp_pw=None)
