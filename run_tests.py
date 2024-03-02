@@ -253,11 +253,13 @@ def extract_model_name_from_file_name(file_name):
 def run_other_tests(models_folder_name, params, dataset_folder_name, comparison_pw, save_pred_folder=None):
     results = {}
     paths_to_models = find_files_in_folder(models_folder_name)
+    paths_to_models = [path for path in paths_to_models if path[-3:] != '.pk']
     model_types = [extract_model_name_from_file_name(filename) for filename in paths_to_models]
     datasets = find_files_in_folder(dataset_folder_name)
 
     for i, path in enumerate(paths_to_models):
         model_location = models_folder_name + path
+        print(f"Testing model {model_location} of type {model_types[i]}")
         model = initialize_model(model_types[i], params)
         model.load_model(model_location)
 
