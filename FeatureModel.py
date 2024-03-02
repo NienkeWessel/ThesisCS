@@ -24,7 +24,7 @@ class FeatureModel(MLModel):
         ngram_range = params['data_params']['ngram_range']
 
         if ngrams:
-            self.vectorizer = CountVectorizer(analyzer='char', lowercase=False, ngram_range=ngram_range, min_df=10)
+            self.vectorizer = CountVectorizer(analyzer='char', lowercase=False, ngram_range=ngram_range, min_df=0.001)
         else: 
             self.vectorizer = None
 
