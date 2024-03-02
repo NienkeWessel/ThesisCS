@@ -54,7 +54,7 @@ def transform_data(model, dataset, comparison_pw, split):
 
 
 def run_test_for_model(model, params, test_file_name, comparison_pw, training=True, load_filename=None,
-                       save_filename=None, use_val=False, save_prediction_results=False):
+                       save_filename=None, use_val=False, save_pred_folder=None):
     print(f"Running test on model {model} with file {test_file_name}")
     metrics = {}
 
@@ -80,10 +80,23 @@ def run_test_for_model(model, params, test_file_name, comparison_pw, training=Tr
 
     predictions = model.predict(test_data.X)
 
-    if save_prediction_results:
-        pass
+    if save_pred_folder is not None:
         # if nonexistent, build df with words, labels and predictions
         # if existent, load from csv and add column, save again
+        test_file_last_part = test_file_name.split('/')[-1]
+        files_in_save_pred_folder = find_files_in_folder(save_pred_folder)
+        save_path = save_pred_folder+test_file_last_part + ".csv"
+        if test_file_last_part + ".csv" not in files_in_save_pred_folder:
+            if use_val:
+                split = "validation"
+            else:
+                split = "test"
+            dataset[split].to_pandas().to_csv(save_path)
+        
+        data_and_pred = pd.read_csv(save_path, index_col=0)
+        data_and_pred[str(model) + "_" + test_file_last_part] = predictions
+        data_and_pred.to_csv(save_path )
+        
 
     accuracy = model.calc_accuracy(test_data.y, predictions)
     print(f"Accuracy: {accuracy}")
@@ -157,7 +170,7 @@ def initialize_model(model_name, params):
 
 
 def run_all_datasets(folder_name, model_name, params, comparison_pw, saving_folder_name=None, use_val=False,
-                     training=True, files=None, saved_models_folder=None, filter_part=None):
+                     training=True, files=None, saved_models_folder=None, filter_part=None, save_pred_folder=None):
     results = {}
     if files is None:
         files = find_files_in_folder(folder_name)
@@ -180,7 +193,7 @@ def run_all_datasets(folder_name, model_name, params, comparison_pw, saving_fold
             params['train_params']['fig_name'] = "Loss_LSTM_" + file + ".png"
         results[file] = run_test_for_model(model, params, folder_name + file, comparison_pw,
                                            save_filename=save_filename, use_val=use_val,
-                                           training=training)
+                                           training=training, save_pred_folder=save_pred_folder)
     print(results)
     with open(model_name, 'w') as f:
         json.dump(results, f, indent=4)
@@ -237,7 +250,7 @@ def extract_model_name_from_file_name(file_name):
     return file_name.split("_")[0][:-5]
 
 
-def run_other_tests(models_folder_name, params, dataset_folder_name, comparison_pw):
+def run_other_tests(models_folder_name, params, dataset_folder_name, comparison_pw, save_pred_folder=None):
     results = {}
     paths_to_models = find_files_in_folder(models_folder_name)
     model_types = [extract_model_name_from_file_name(filename) for filename in paths_to_models]
@@ -251,7 +264,7 @@ def run_other_tests(models_folder_name, params, dataset_folder_name, comparison_
         for dataset in datasets: 
             dataset_path = dataset_folder_name + dataset
             results[dataset + "+" + path] = run_test_for_model(model, params, dataset_path, comparison_pw,
-                                           use_val=False, training=False)
+                                           use_val=False, training=False, save_pred_folder=save_pred_folder)
     
 
     print(results)
@@ -294,7 +307,7 @@ model_params = {}
 train_params = {}
 
 data_params['levenshtein'] = False
-data_params['ngrams'] = True
+data_params['ngrams'] = False
 data_params['ngram_range'] = (1, 2)
 data_params['internet'] = internet
 
@@ -366,6 +379,8 @@ model_name = "DecisionTree"
 #                       use_val=True, files=['most_common_En1.0_1000_split0']))
 print(run_all_datasets("./datasets/def/", model_name, params, comparison_pw, saving_folder_name="./models/",
                        training=True, use_val=True, files=['most_common_En1.0_1000_split2']))
+print(run_all_datasets("./datasets/def/", model_name, params, comparison_pw, saving_folder_name="./models/",
+                       training=False, saved_models_folder="./models/", use_val=True, files=['most_common_En1.0_1000_split2'], save_pred_folder="./predictions/"))
 #print(run_all_datasets("./datasets/def/", model_name, params, comparison_pw,
 #                       training=True, use_val=True))
 
