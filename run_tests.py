@@ -54,7 +54,7 @@ def transform_data(model, dataset, comparison_pw, split):
 
 
 def run_test_for_model(model, params, test_file_name, comparison_pw, training=True, load_filename=None,
-                       save_filename=None, use_val=False, save_pred_folder=None):
+                       save_filename=None, use_val=False, save_pred_folder=None, tag=""):
     print(f"Running test on model {model} with file {test_file_name}")
     metrics = {}
 
@@ -94,7 +94,7 @@ def run_test_for_model(model, params, test_file_name, comparison_pw, training=Tr
             dataset[split].to_pandas().to_csv(save_path)
         
         data_and_pred = pd.read_csv(save_path, index_col=0)
-        data_and_pred[str(model) + "_" + test_file_last_part] = predictions
+        data_and_pred[str(model) + "_" + test_file_last_part + "_" + tag] = predictions
         data_and_pred.to_csv(save_path )
         
 
@@ -177,7 +177,7 @@ def initialize_model(model_name, params):
 
 
 def run_all_datasets(folder_name, model_name, params, comparison_pw, saving_folder_name=None, use_val=False,
-                     training=True, files=None, saved_models_folder=None, filter_part=None, save_pred_folder=None):
+                     training=True, files=None, saved_models_folder=None, filter_part=None, save_pred_folder=None, tag=""):
     results = {}
     if files is None:
         files = find_files_in_folder(folder_name)
@@ -200,7 +200,7 @@ def run_all_datasets(folder_name, model_name, params, comparison_pw, saving_fold
             params['train_params']['fig_name'] = "Loss_LSTM_" + file + ".png"
         results[file] = run_test_for_model(model, params, folder_name + file, comparison_pw,
                                            save_filename=save_filename, use_val=use_val,
-                                           training=training, save_pred_folder=save_pred_folder)
+                                           training=training, save_pred_folder=save_pred_folder, tag=tag)
     print(results)
     with open(model_name, 'w') as f:
         json.dump(results, f, indent=4)
@@ -257,7 +257,7 @@ def extract_model_name_from_file_name(file_name):
     return file_name.split("_")[0][:-5]
 
 
-def run_other_tests(models_folder_name, params, dataset_folder_name, comparison_pw, save_pred_folder=None):
+def run_other_tests(models_folder_name, params, dataset_folder_name, comparison_pw, save_pred_folder=None, tag=""):
     results = {}
     paths_to_models = find_files_in_folder(models_folder_name)
     paths_to_models = [path for path in paths_to_models if path[-3:] != '.pk']
@@ -273,7 +273,7 @@ def run_other_tests(models_folder_name, params, dataset_folder_name, comparison_
         for dataset in datasets: 
             dataset_path = dataset_folder_name + dataset
             results[dataset + "+" + path] = run_test_for_model(model, params, dataset_path, comparison_pw,
-                                           use_val=False, training=False, save_pred_folder=save_pred_folder)
+                                           use_val=False, training=False, save_pred_folder=save_pred_folder, tag=tag)
     
 
     print(results)
@@ -389,7 +389,7 @@ model_name = "DecisionTree"
 print(run_all_datasets("./datasets/def/", model_name, params, comparison_pw, saving_folder_name="./models/",
                        training=True, use_val=True, files=['most_common_En1.0_1000_split2']))
 print(run_all_datasets("./datasets/def/", model_name, params, comparison_pw, saving_folder_name="./models/",
-                       training=False, saved_models_folder="./models/", use_val=True, files=['most_common_En1.0_1000_split2'], save_pred_folder="./predictions/"))
+                       training=False, saved_models_folder="./models/", use_val=True, files=['most_common_En1.0_1000_split2'], save_pred_folder="./predictions/", tag= "test"))
 #print(run_all_datasets("./datasets/def/", model_name, params, comparison_pw,
 #                       training=True, use_val=True))
 
