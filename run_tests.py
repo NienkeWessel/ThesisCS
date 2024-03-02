@@ -159,11 +159,18 @@ def initialize_model(model_name, params):
         return DecisionTree(params)
     if model_name == "RandomForest":
         return RandomForest(params)
-    if model_name == "NaiveBayes":
+    if model_name == "NaiveBayes" or model_name== 'GaussianNB':
         return GaussianNaiveBayes(params)
-    if model_name == "MultinomialNaiveBayes":
+    if model_name == "MultinomialNaiveBayes" or model_name == 'MultinomialNB':
         return MultinomialNaiveBayes(params)
     if model_name == "KNearestNeighbors":
+        return KNearestNeighbors(params)
+    if model_name == "KNearestNeighborsMinkowski":
+        params['model_params']['metric'] = 'minkowski'
+        params['model_params']['p'] = 1
+        return KNearestNeighbors(params)
+    if model_name == "KNearestNeighborsCosine":
+        params['model_params']['metric'] = 'cosine'
         return KNearestNeighbors(params)
     if model_name == "AdaBoost":
         return AdaBoost(params)
