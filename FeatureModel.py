@@ -58,7 +58,8 @@ class FeatureModel(MLModel):
                 pickle.dump(self.vectorizer, fin)
 
     def load_model(self, filename):
-        self.model = sio.load(filename)
+        unknown_types = sio.get_untrusted_types(file=filename)
+        self.model = sio.load(filename, trusted=unknown_types)
         if self.params['data_params']['ngrams']:
             with open(filename + '_vectorizer.pk', 'rb') as fin:
                 self.vectorizer = pickle.load(fin)
