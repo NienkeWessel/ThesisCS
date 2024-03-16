@@ -54,7 +54,7 @@ def transform_data(model, dataset, comparison_pw, split):
 
 
 def run_test_for_model(model, params, test_file_name, comparison_pw, training=True, load_filename=None,
-                       save_filename=None, use_val=False, save_pred_folder=None, tag=""):
+                       save_filename=None, use_val=False, save_pred_folder=None, tag="", model_location=""):
     print(f"Running test on model {model} with file {test_file_name}")
     metrics = {}
 
@@ -94,7 +94,7 @@ def run_test_for_model(model, params, test_file_name, comparison_pw, training=Tr
             dataset[split].to_pandas().to_csv(save_path)
         
         data_and_pred = pd.read_csv(save_path, index_col=0)
-        data_and_pred[str(model) + "_" + test_file_last_part + "_" + tag] = predictions
+        data_and_pred[str(model) + "-" + model_location.split("/")[-1] + "-" + test_file_last_part + "-" + tag] = predictions
         data_and_pred.to_csv(save_path )
         
 
@@ -257,24 +257,41 @@ def extract_model_name_from_file_name(file_name):
     return file_name.split("_")[0][:-5]
 
 
-def run_other_tests(models_folder_name, params, dataset_folder_name, comparison_pw, save_pred_folder=None, tag=""):
+def run_other_tests(models_folder_name, params, dataset_folder_name, comparison_pw, save_pred_folder=None, 
+                    tag="", check_if_present=True):
     results = {}
-    paths_to_models = find_files_in_folder(models_folder_name)
-    paths_to_models = [path for path in paths_to_models if path[-3:] != '.pk']
-    model_types = [extract_model_name_from_file_name(filename) for filename in paths_to_models]
+    models_filenames = find_files_in_folder(models_folder_name)
+
+    # Filter out .pk files, because those are the pickled files of the word tokenizers for bigrams, 
+    # and they go with a model, i.e. are not a model themselves
+    models_filenames = [path for path in models_filenames if path[-3:] != '.pk']
+
+    model_types = [extract_model_name_from_file_name(filename) for filename in models_filenames]
     datasets = find_files_in_folder(dataset_folder_name)
 
-    for i, path in enumerate(paths_to_models):
-        model_location = models_folder_name + path
+    for i, model_filename in enumerate(models_filenames):
+        model_location = models_folder_name + model_filename
         print(f"Testing model {model_location} of type {model_types[i]}")
         model = initialize_model(model_types[i], params)
         model.load_model(model_location)
 
+        if save_pred_folder is not None:
+            data_test_Idunno = pd.read_csv(save_pred_folder + "long_passwords_16.csv", index_col=0)
+            if check_if_present:
+                headers = data_test_Idunno.columns
+                present = False
+                for header in headers:
+                    if model_filename in header and tag in header:
+                        present = True
+                if present:
+                    print(f"Skipped file {model_filename}, as it is already in the file")
+                    continue
+
         for dataset in datasets: 
             dataset_path = dataset_folder_name + dataset
-            results[dataset + "+" + path] = run_test_for_model(model, params, dataset_path, comparison_pw,
-                                           use_val=False, training=False, save_pred_folder=save_pred_folder, tag=tag)
-    
+            results[dataset + "+" + model_filename] = run_test_for_model(model, params, dataset_path, comparison_pw,
+                                           use_val=False, training=False, save_pred_folder=save_pred_folder, tag=tag, 
+                                           model_location=model_location)
 
     print(results)
     with open(model_name, 'w') as f:
