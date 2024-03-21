@@ -91,7 +91,7 @@ class PytorchModel(NeuralNetworkModel):
 
     def predict(self, X):
         test = CharacterDataset(X)
-        train_loader = torch.utils.data.DataLoader(test, batch_size=self.batch_size, shuffle=False, drop_last=True)
+        train_loader = torch.utils.data.DataLoader(test, batch_size=self.batch_size, shuffle=False, drop_last=False)
         self.model.train(False)
 
         self.model = self.model.to(device)
@@ -122,7 +122,7 @@ class LSTMModel(PytorchModel):
         else:
             lstm_input_size = 32
             hidden_state_size = 256
-            self.batch_size = 64
+            self.batch_size = params['model_params']['batch_size']
             num_sequence_layers = 2
             output_dim = 2  # !!!!!!!!!!!!!!!!!!!!!!!!
             self.rnn_type = 'LSTM'

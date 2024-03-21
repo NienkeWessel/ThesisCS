@@ -94,7 +94,7 @@ def run_test_for_model(model, params, test_file_name, comparison_pw, training=Tr
             dataset[split].to_pandas().to_csv(save_path)
         
         data_and_pred = pd.read_csv(save_path, index_col=0)
-        data_and_pred[str(model) + "-" + model_location.split("/")[-1] + "-" + test_file_last_part + "-" + tag] = predictions
+        data_and_pred[str(model) + "-" + model_location.split("/")[-1] + "-" + test_file_last_part + "-" + tag] = predictions[:len(data_and_pred)]
         data_and_pred.to_csv(save_path )
         
 
@@ -369,6 +369,7 @@ model_params['weights'] = 'distance'
 
 # LSTM parameters
 model_params['batch_size'] = 64
+data_params['batch_size'] = model_params['batch_size']
 
 # Huggingface model parameters
 model_params['internet'] = internet
@@ -378,7 +379,7 @@ params = {'data_params': data_params,
           'model_params': model_params}
 
 # model = DecisionTree(params)
-model_name = "DecisionTree"
+#model_name = "DecisionTree"
 #model_name = "KNearestNeighbors"
 # model = LSTMModel()
 
@@ -387,7 +388,7 @@ model_name = "DecisionTree"
 
 #model_name = "AdaBoost"
 #model_name = "DecisionTree"
-#model_name = "LSTM"
+model_name = "LSTM"
 # model_name = "MultinomialNaiveBayes"
 #model = initialize_model(model_name, params)
 #run_test_for_model(model, params, './datasets/def/most_common_En1.0_500000_split1', comparison_pw)
@@ -404,9 +405,9 @@ model_name = "DecisionTree"
 #print(run_all_datasets("./datasets/def/", model_name, params, comparison_pw, "./models/",
 #                       use_val=True, files=['most_common_En1.0_1000_split0']))
 print(run_all_datasets("./datasets/def/", model_name, params, comparison_pw, saving_folder_name="./models/",
-                       training=True, use_val=True, files=['most_common_En1.0_1000_split2']))
-print(run_all_datasets("./datasets/def/", model_name, params, comparison_pw, saving_folder_name="./models/",
-                       training=False, saved_models_folder="./models/", use_val=True, files=['most_common_En1.0_1000_split2'], save_pred_folder="./predictions/", tag= "test"))
+                       training=True, use_val=True, files=['most_common_En1.0_1000_split2'], save_pred_folder="./predictions/"))
+#print(run_all_datasets("./datasets/def/", model_name, params, comparison_pw, saving_folder_name="./models/",
+#                       training=False, saved_models_folder="./models/", use_val=True, files=['most_common_En1.0_1000_split2'], save_pred_folder="./predictions/", tag= "test"))
 #print(run_all_datasets("./datasets/def/", model_name, params, comparison_pw,
 #                       training=True, use_val=True))
 

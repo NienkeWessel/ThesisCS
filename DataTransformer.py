@@ -110,9 +110,29 @@ class FeatureDataTransformer(DataTransformer):
 class PytorchDataTransformer(DataTransformer):
     def __init__(self, dataset, params) -> None:
         super().__init__(dataset, params)
+
+        # Check if dataset needs to be padded
+        batch_size = params['batch_size']
+
+        # Calculate how many samples you need to pad
+        remainder = len(dataset) % batch_size
+        padding_size = batch_size - remainder
+
+        print(len(self.X))
+
+        # If padding is needed, duplicate samples from the original dataset to pad it
+        if padding_size > 0:
+            self.X = self.X + self.X[:padding_size]
+            self.y = self.y + self.y[:padding_size]
+
+        print(len(self.X))
+
         self.X = np.array(self.X).flatten()
-        self.y = (torch.nn.functional.one_hot(torch.as_tensor(dataset['label']).to(torch.int64), num_classes=2)).to(
+        self.y = (torch.nn.functional.one_hot(torch.as_tensor(self.y).to(torch.int64), num_classes=2)).to(
             float)
+        
+        print(len(self.X))
+        
 
 
 class PassGPT10Transformer(DataTransformer):
