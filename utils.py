@@ -66,6 +66,33 @@ def confusion(pred, y):
     return true_positives, false_positives, true_negatives, false_negatives
 
 
+def pad_data(data):
+    # Check if dataset needs to be padded
+    batch_size = 64
+
+    # Calculate how many samples you need to pad
+    remainder = len(data) % batch_size
+    padding_size = batch_size - remainder
+
+    print(len(data))
+
+    # If padding is needed, duplicate samples from the original dataset to pad it
+    if padding_size > 0:
+        data = data + data[:padding_size]
+        
+
+    print(len(data))
+    return data
+
+def split_column_title(title):
+    """
+    Splits a column title into four parts 
+    :param title of the column that needs to be split
+    :return: four-tuple with (model_type, complete model name, dataset tested on, tag)
+    """
+    return title.split("-")
+
+
 grids = {
     "DecisionTree": {
         'criterion': ('gini', 'entropy', 'log_loss'),
