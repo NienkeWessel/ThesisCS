@@ -8,6 +8,69 @@ from datasets import Dataset
 
 
 
+def counts(word, comparison_pw, levenshtein=False):
+    alpha_lower = 0
+    alpha_upper = 0
+    numeric = 0
+    special = 0
+    s = ""
+
+    try: 
+        for c in word:
+            if c.islower():
+                alpha_lower += 1
+                s += 'L'
+            elif c.isupper():
+                alpha_upper += 1
+                s += 'U'
+            elif c.isnumeric():
+                numeric += 1
+                s += 'N'
+            else:
+                special += 1
+                s += 'S'
+        length = len(word)
+        char_sets = bool(alpha_lower) + bool(alpha_upper) + bool(numeric) + bool(special)
+
+        if levenshtein:
+            lev_d = calculate_levenshtein_distance(word, comparison_pw)
+            try: 
+                return [length, alpha_lower, alpha_lower / length, alpha_upper, alpha_upper / length, numeric,
+                        numeric / length, special, special / length, char_sets, count_non_repeating(s), lev_d]
+            except: 
+                return [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+        else:
+            return [length, alpha_lower, alpha_lower / length, alpha_upper, alpha_upper / length, numeric,
+                    numeric / length, special, special / length, char_sets, count_non_repeating(s)]
+    except:
+        return [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+        #raise Exception(f"problems here with word {word}")
+
+def count_non_repeating(text):
+    """ Remove repeating letters from a string
+    E.g. aaabbbccccccaaa becomes abca
+
+    :param text: input text
+
+    return: text without repeating letters """
+
+    count = 0
+    for i, c in enumerate(text):
+        if i == 0 or c != text[i - 1]:
+            count += 1
+    return count
+
+def calculate_levenshtein_distance(word, passwords):
+    low = 42000
+    for pw in passwords:
+        d = lev(word, pw, score_cutoff=low - 1)
+        if d < low:
+            low = d
+            if low == 0:
+                return low
+    return low
+
+
 class DataTransformer(ABC):
     def __init__(self, dataset, params) -> None:
         """
@@ -51,60 +114,7 @@ class FeatureDataTransformer(DataTransformer):
         self.X = features
         self.y = dataset['label']
 
-    def counts(self, word, comparison_pw, levenshtein=False):
-        alpha_lower = 0
-        alpha_upper = 0
-        numeric = 0
-        special = 0
-        s = ""
-
-        for c in word:
-            if c.islower():
-                alpha_lower += 1
-                s += 'L'
-            elif c.isupper():
-                alpha_upper += 1
-                s += 'U'
-            elif c.isnumeric():
-                numeric += 1
-                s += 'N'
-            else:
-                special += 1
-                s += 'S'
-        length = len(word)
-        char_sets = bool(alpha_lower) + bool(alpha_upper) + bool(numeric) + bool(special)
-
-        if levenshtein:
-            lev_d = self.calculate_levenshtein_distance(word, comparison_pw)
-            return [length, alpha_lower, alpha_lower / length, alpha_upper, alpha_upper / length, numeric,
-                    numeric / length, special, special / length, char_sets, self.count_non_repeating(s), lev_d]
-        else:
-            return [length, alpha_lower, alpha_lower / length, alpha_upper, alpha_upper / length, numeric,
-                    numeric / length, special, special / length, char_sets, self.count_non_repeating(s)]
-
-    def count_non_repeating(self, text):
-        """ Remove repeating letters from a string
-        E.g. aaabbbccccccaaa becomes abca
-
-        :param text: input text
-
-        return: text without repeating letters """
-
-        count = 0
-        for i, c in enumerate(text):
-            if i == 0 or c != text[i - 1]:
-                count += 1
-        return count
-
-    def calculate_levenshtein_distance(self, word, passwords):
-        low = 42000
-        for pw in passwords:
-            d = lev(word, pw, score_cutoff=low - 1)
-            if d < low:
-                low = d
-                if low == 0:
-                    return low
-        return low
+    
 
 
 class PytorchDataTransformer(DataTransformer):
