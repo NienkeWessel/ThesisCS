@@ -165,16 +165,16 @@ class KNearestNeighbors(FeatureModel):
             weights = 'uniform'
 
         if 'metric' in model_params:
-            metric = model_params['metric']
+            self.metric = model_params['metric']
         else:
-            metric = 'minkowski'
+            self.metric = 'minkowski'
 
         if 'p' in model_params:
             p = model_params['p']
         else:
             p = 2
 
-        self.model = KNeighborsClassifier(n_neighbors=n_neighbors, weights=weights, p=p, metric=metric)
+        self.model = KNeighborsClassifier(n_neighbors=n_neighbors, weights=weights, p=p, metric=self.metric)
 
     def __str__(self) -> str:
         return "KNearestNeighborsModel"
