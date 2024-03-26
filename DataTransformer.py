@@ -100,7 +100,7 @@ class FeatureDataTransformer(DataTransformer):
         levenshtein = params['levenshtein']
 
 
-        features = [self.counts(word, comparison_pw, levenshtein=levenshtein) for word in dataset['text']]
+        features = [counts(word, comparison_pw, levenshtein=levenshtein) for word in dataset['text']]
 
         if not (vectorizer is None):
             if split == 'training':
