@@ -8,7 +8,6 @@ from transformers import RobertaTokenizerFast
 import torch
 from abc import ABC, abstractmethod
 
-
 from transformers import TrainingArguments, Trainer
 from transformers import AutoModelForSequenceClassification
 from transformers import ReformerConfig, ReformerForSequenceClassification
@@ -38,7 +37,7 @@ class HuggingfaceModel(NeuralNetworkModel):
         pass
 
     def save_model(self, filename):
-        #self.trainer.save_model(filename)
+        # self.trainer.save_model(filename)
         self.model.save_pretrained(filename)
 
     @abstractmethod
@@ -71,7 +70,7 @@ class PassGPT10Model(HuggingfaceModel):
         self.training_args = TrainingArguments(
             output_dir="./model",
             evaluation_strategy="steps",
-            eval_steps=0.1, # run evaluation at every 10% of the dataset
+            eval_steps=0.1,  # run evaluation at every 10% of the dataset
             per_device_train_batch_size=4,
             per_device_eval_batch_size=4,
             num_train_epochs=3,
@@ -89,8 +88,8 @@ class PassGPT10Model(HuggingfaceModel):
                                                               truncation_side="right",
                                                               is_split_into_words=True)
 
-        self.trainer = CustomTrainer(model=self.model, args=self.training_args, tokenizer=self.tokenizer,)
-    
+        self.trainer = CustomTrainer(model=self.model, args=self.training_args, tokenizer=self.tokenizer, )
+
     def __str__(self) -> str:
         return "PassGPTModel"
 
@@ -116,10 +115,13 @@ class PassGPT10Model(HuggingfaceModel):
         loss_history = pd.DataFrame(self.trainer.state.log_history)
         loss_history.to_csv(loss_file)
 
-    def predict(self, X):
+    def predict(self, X, return_raw=False):
         dataset = HuggingfaceDataset.from_dict(X)
         self.complete_prediction = self.trainer.predict(dataset)
-        return self.transform_pred(torch.tensor(self.complete_prediction.predictions))
+        if return_raw:
+            return self.complete_prediction.predictions
+        else:
+            return self.transform_pred(torch.tensor(self.complete_prediction.predictions))
 
     def save_model(self, filename):
         super().save_model(filename)
@@ -132,25 +134,24 @@ class PassGPT10Model(HuggingfaceModel):
         :param filename:
         :return:
         '''
+        print("Warning, model loading does not work currently. Please give model location at moment of object creation")
         return
-        self.model = AutoModelForSequenceClassification.from_pretrained(filename, num_labels=2)
-        self.tokenizer = RobertaTokenizerFast.from_pretrained(filename,
-                                                              max_len=12, padding="max_length",
-                                                              truncation=True, do_lower_case=False,
-                                                              strip_accents=False, mask_token="<mask>",
-                                                              unk_token="<unk>", pad_token="<pad>",
-                                                              truncation_side="right",
-                                                              is_split_into_words=True)
-
-
+        # self.model = AutoModelForSequenceClassification.from_pretrained(filename, num_labels=2)
+        # self.tokenizer = RobertaTokenizerFast.from_pretrained(filename,
+        #                                                      max_len=12, padding="max_length",
+        #                                                      truncation=True, do_lower_case=False,
+        #                                                      strip_accents=False, mask_token="<mask>",
+        #                                                      unk_token="<unk>", pad_token="<pad>",
+        #                                                      truncation_side="right",
+        #                                                      is_split_into_words=True)
 
 
 # https://huggingface.co/viklofg/swedish-ocr-correction
 # https://huggingface.co/docs/transformers/model_doc/reformer -> should be more efficient for longer entry sequences, which is what we want
-        # https://huggingface.co/google/reformer-enwik8
-        # https://huggingface.co/robingeibel/reformer-finetuned/blob/main/README.md (nul informatie beschikbaar)
+# https://huggingface.co/google/reformer-enwik8
+# https://huggingface.co/robingeibel/reformer-finetuned/blob/main/README.md (nul informatie beschikbaar)
 # Tay et al. compared different transformer variants that should be better for longer input sequences
-        
+
 class ReformerModel(HuggingfaceModel):
     # NB: https://stackoverflow.com/questions/68742863/error-while-trying-to-fine-tune-the-reformermodelwithlmhead-google-reformer-enw
     def __init__(self, params) -> None:
@@ -163,8 +164,8 @@ class ReformerModel(HuggingfaceModel):
         else:
             model_loc = "reformer-enwik8"
         conf = ReformerConfig.from_pretrained(model_loc)
-        conf.axial_pos_embds = False 
-        self.model = AutoModelForSequenceClassification.from_pretrained(model_loc, config =conf)
+        conf.axial_pos_embds = False
+        self.model = AutoModelForSequenceClassification.from_pretrained(model_loc, config=conf)
 
         seed = 42
         torch.manual_seed(seed)
@@ -173,7 +174,7 @@ class ReformerModel(HuggingfaceModel):
         self.training_args = TrainingArguments(
             output_dir="./reformermodel",
             evaluation_strategy="steps",
-            eval_steps=0.1, # run evaluation at every 10% of the dataset
+            eval_steps=0.1,  # run evaluation at every 10% of the dataset
             per_device_train_batch_size=4,
             per_device_eval_batch_size=4,
             num_train_epochs=3,
@@ -183,8 +184,7 @@ class ReformerModel(HuggingfaceModel):
             report_to='none'
         )
 
-        self.trainer = CustomTrainer(model=self.model, args=self.training_args,)
-    
+        self.trainer = CustomTrainer(model=self.model, args=self.training_args, prediction_loss_only=False)
 
     def train(self, X, y, params=None):
         X.update({'labels': y})
@@ -198,6 +198,7 @@ class ReformerModel(HuggingfaceModel):
             args=self.training_args,
             train_dataset=dataset['train'],
             eval_dataset=dataset['test'],
+            prediction_loss_only = False,
         )
 
         self.trainer.train()
@@ -213,9 +214,10 @@ class ReformerModel(HuggingfaceModel):
         :param filename:
         :return:
         '''
+        print("Warning, model loading does not work currently. Please give model location at moment of object creation")
         return
-        conf = ReformerConfig.from_pretrained(filename)
-        self.model = ReformerForSequenceClassification.from_pretrained(filename, config=conf)
+        # conf = ReformerConfig.from_pretrained(filename)
+        # self.model = ReformerForSequenceClassification.from_pretrained(filename, config=conf)
 
     def __str__(self) -> str:
         return "ReformerModel"
