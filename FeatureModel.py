@@ -177,7 +177,7 @@ class KNearestNeighbors(FeatureModel):
         self.model = KNeighborsClassifier(n_neighbors=n_neighbors, weights=weights, p=p, metric=self.metric)
 
     def __str__(self) -> str:
-        return "KNearestNeighborsModel"
+        return "KNearestNeighbors" + self.metric + "Model"
 
 class GaussianNaiveBayes(FeatureModel):
     def __init__(self, params) -> None:
