@@ -5,6 +5,11 @@ import json
 from datasets import load_from_disk, Dataset
 import pandas as pd
 
+import torch
+from d2l import torch as d2l
+
+device = d2l.try_gpu()
+
 import sys
 
 from sklearn.model_selection import GridSearchCV
@@ -42,7 +47,8 @@ def transform_data(model, dataset, comparison_pw, split):
     :return: the transformed data in a DataTransformer object
     """
     if isinstance(model, FeatureModel):  # Check if we are dealing with a feature model
-        return FeatureDataTransformer(dataset, model.params['data_params'], comparison_pw['text'], model.vectorizer, split=split)
+        return FeatureDataTransformer(dataset, model.params['data_params'], comparison_pw['text'], model.vectorizer,
+                                      split=split)
     elif isinstance(model, PytorchModel):
         return PytorchDataTransformer(dataset, model.params['data_params'])
     elif isinstance(model, PassGPT10Model):
@@ -85,18 +91,25 @@ def run_test_for_model(model, params, test_file_name, comparison_pw, training=Tr
         # if existent, load from csv and add column, save again
         test_file_last_part = test_file_name.split('/')[-1]
         files_in_save_pred_folder = find_files_in_folder(save_pred_folder)
-        save_path = save_pred_folder+test_file_last_part + ".csv"
+        save_path = save_pred_folder + test_file_last_part + ".csv"
         if test_file_last_part + ".csv" not in files_in_save_pred_folder:
             if use_val:
                 split = "validation"
             else:
                 split = "test"
             dataset[split].to_pandas().to_csv(save_path)
-        
+
         data_and_pred = pd.read_csv(save_path, index_col=0)
-        data_and_pred[str(model) + "-" + model_location.split("/")[-1] + "-" + test_file_last_part + "-" + tag] = predictions[:len(data_and_pred)]
-        data_and_pred.to_csv(save_path )
-        
+        if isinstance(model, PassGPT10Model) or isinstance(model, PytorchModel):
+            data_and_pred[str(model) + "-" + model_location.split("/")[
+                -1] + "-" + test_file_last_part + "-0" + tag] = predictions[:len(data_and_pred), 0].cpu()
+            data_and_pred[str(model) + "-" + model_location.split("/")[
+                -1] + "-" + test_file_last_part + "-1" + tag] = predictions[:len(data_and_pred), 1].cpu()
+        else:
+            data_and_pred[
+                str(model) + "-" + model_location.split("/")[-1] + "-" + test_file_last_part + 
+                "-" + tag] = predictions[:len(data_and_pred)].cpu()
+        data_and_pred.to_csv(save_path)
 
     accuracy = model.calc_accuracy(test_data.y, predictions)
     print(f"Accuracy: {accuracy}")
@@ -151,33 +164,36 @@ def print_dataset(dataset, split='train'):
 def initialize_model(model_name, params):
     if model_name == "PassGPT":
         return PassGPT10Model(params)
-    if model_name == "Reformer":
+    elif model_name == "Reformer":
         return ReformerModel(params)
-    if model_name == "LSTM":
+    elif model_name == "LSTM":
         return LSTMModel(params)
-    if model_name == "DecisionTree":
+    elif model_name == "DecisionTree":
         return DecisionTree(params)
-    if model_name == "RandomForest":
+    elif model_name == "RandomForest":
         return RandomForest(params)
-    if model_name == "NaiveBayes" or model_name== 'GaussianNB':
+    elif model_name == "NaiveBayes" or model_name == 'GaussianNB':
         return GaussianNaiveBayes(params)
-    if model_name == "MultinomialNaiveBayes" or model_name == 'MultinomialNB':
+    elif model_name == "MultinomialNaiveBayes" or model_name == 'MultinomialNB':
         return MultinomialNaiveBayes(params)
-    if model_name == "KNearestNeighbors":
+    elif model_name == "KNearestNeighbors":
         return KNearestNeighbors(params)
-    if model_name == "KNearestNeighborsMinkowski":
+    elif model_name == "KNearestNeighborsMinkowski":
         params['model_params']['metric'] = 'minkowski'
         params['model_params']['p'] = 1
         return KNearestNeighbors(params)
-    if model_name == "KNearestNeighborsCosine":
+    elif model_name == "KNearestNeighborsCosine":
         params['model_params']['metric'] = 'cosine'
         return KNearestNeighbors(params)
-    if model_name == "AdaBoost":
+    elif model_name == "AdaBoost":
         return AdaBoost(params)
+    else:
+        print(f"Did not recognize model type {model_name}")
 
 
 def run_all_datasets(folder_name, model_name, params, comparison_pw, saving_folder_name=None, use_val=False,
-                     training=True, files=None, saved_models_folder=None, filter_part=None, save_pred_folder=None, tag=""):
+                     training=True, files=None, saved_models_folder=None, filter_part=None, save_pred_folder=None,
+                     tag=""):
     results = {}
     if files is None:
         files = find_files_in_folder(folder_name)
@@ -187,6 +203,7 @@ def run_all_datasets(folder_name, model_name, params, comparison_pw, saving_fold
 
         if saved_models_folder is not None:
             model_location = saved_models_folder + model_name + "Model" + "_" + file
+            print(f"Trying to find model at location {model_location}")
             params['model_loc'] = model_location
             model = initialize_model(model_name, params)
             model.load_model(model_location)
@@ -257,7 +274,7 @@ def extract_model_name_from_file_name(file_name):
     return file_name.split("_")[0][:-5]
 
 
-def run_other_tests(models_folder_name, params, dataset_folder_name, comparison_pw, save_pred_folder=None, 
+def run_other_tests(models_folder_name, params, dataset_folder_name, comparison_pw, save_pred_folder=None,
                     tag="", check_if_present=True):
     results = {}
     models_filenames = find_files_in_folder(models_folder_name)
@@ -287,11 +304,12 @@ def run_other_tests(models_folder_name, params, dataset_folder_name, comparison_
                     print(f"Skipped file {model_filename}, as it is already in the file")
                     continue
 
-        for dataset in datasets: 
+        for dataset in datasets:
             dataset_path = dataset_folder_name + dataset
             results[dataset + "+" + model_filename] = run_test_for_model(model, params, dataset_path, comparison_pw,
-                                           use_val=False, training=False, save_pred_folder=save_pred_folder, tag=tag, 
-                                           model_location=model_location)
+                                                                         use_val=False, training=False,
+                                                                         save_pred_folder=save_pred_folder, tag=tag,
+                                                                         model_location=model_location)
 
     print(results)
     with open(model_name, 'w') as f:
@@ -299,9 +317,9 @@ def run_other_tests(models_folder_name, params, dataset_folder_name, comparison_
     return results
 
 
-#files = find_files_in_folder('datasets/def')
-#print(files)
-#print(filter_files(files, "50"))
+# files = find_files_in_folder('datasets/def')
+# print(files)
+# print(filter_files(files, "50"))
 
 comparison_pw = load_from_disk("comparison_pw")
 
@@ -351,11 +369,11 @@ model_params['min_samples_leaf'] = 1
 model_params['criterion'] = 'gini'
 
 # optimal RF parameters
-model_params['n_estimators'] = 50 #watch out with same name parameter for AdaBoost
+model_params['n_estimators'] = 50  # watch out with same name parameter for AdaBoost
 # rest of parameters is the same as DT
 
 # optimal AdaBoost parameters
-#model_params['n_estimators'] = 200 #comment out when using RF
+# model_params['n_estimators'] = 200 #comment out when using RF
 model_params['learning_rate'] = 1.0
 
 # optimal KNN parameters
@@ -364,8 +382,8 @@ model_params['metric'] = 'cosine'
 model_params['weights'] = 'distance'
 
 # --- OR ---
-#model_params['metric'] = 'minkowski'
-#model_params['p'] = 1
+# model_params['metric'] = 'minkowski'
+# model_params['p'] = 1
 
 # LSTM parameters
 model_params['batch_size'] = 64
@@ -379,21 +397,22 @@ params = {'data_params': data_params,
           'model_params': model_params}
 
 # model = DecisionTree(params)
-#model_name = "DecisionTree"
-#model_name = "KNearestNeighbors"
+# model_name = "DecisionTree"
+# model_name = "KNearestNeighbors"
 # model = LSTMModel()
 
 # model = PassGPT10Model(params, load_filename="./models/PassGPT")
-#model_name = "PassGPT"
-
-#model_name = "AdaBoost"
-#model_name = "DecisionTree"
-model_name = "LSTM"
+model_name = "PassGPT"
+params['model_loc'] = '../uitlaatstedag/yolo/modelspart1/PassGPT_most_common_En0.5Sp0.5_1000_split0'
+model = PassGPT10Model(params)
+# model_name = "AdaBoost"
+# model_name = "DecisionTree"
+#model_name = "LSTM"
 # model_name = "MultinomialNaiveBayes"
 #model = initialize_model(model_name, params)
-#run_test_for_model(model, params, './datasets/def/most_common_En1.0_500000_split1', comparison_pw)
-#print(model.model.get_depth())
-#model.plot_tree("Tree_most_common_En1.0_500000_split1")
+# run_test_for_model(model, params, './datasets/def/most_common_En1.0_500000_split1', comparison_pw)
+# print(model.model.get_depth())
+# model.plot_tree("Tree_most_common_En1.0_500000_split1")
 # run_test_for_model(model, params, './datasets/def/most_common_En1.0_1000_split0', comparison_pw,
 #                   save_filename="./models/Reformer_most_common_En1.0_1000_split0")
 # run_test_for_model(model, params, './datasets/def/most_common_En1.0_1000_split0', comparison_pw,
@@ -402,13 +421,21 @@ model_name = "LSTM"
 # run_test_for_model(model, params, './datasets/def/most_common_En1.0_10000_split0', comparison_pw,
 #                   training=False, load_filename="./models/LSTMModel_most_common_En1.0_10000_split0")
 
-#print(run_all_datasets("./datasets/def/", model_name, params, comparison_pw, "./models/",
+# print(run_all_datasets("./datasets/def/", model_name, params, comparison_pw, "./models/",
 #                       use_val=True, files=['most_common_En1.0_1000_split0']))
-print(run_all_datasets("./datasets/def/", model_name, params, comparison_pw, saving_folder_name="./models/",
-                       training=True, use_val=True, files=['most_common_En1.0_1000_split2'], save_pred_folder="./predictions/"))
+
+#run_test_for_model(model, params, './datasets/other_datasets/most_common_Du1.0_10000', comparison_pw, training=False, load_filename='../uitlaatstedag/yolo/modelspart1/PassGPT_most_common_En0.5Sp0.5_1000_split0',)  
+
+print(run_all_datasets('./datasets/other_datasets/', model_name, params, comparison_pw, training=False, save_pred_folder="./predictions/", tag="testretry"))
+
+# DEZE WAS UITGECOMMEND:
+
 #print(run_all_datasets("./datasets/def/", model_name, params, comparison_pw, saving_folder_name="./models/",
+#                       training=True, use_val=True, files=['most_common_En1.0_1000_split2'],
+#                       save_pred_folder="./predictions/"))
+# print(run_all_datasets("./datasets/def/", model_name, params, comparison_pw, saving_folder_name="./models/",
 #                       training=False, saved_models_folder="./models/", use_val=True, files=['most_common_En1.0_1000_split2'], save_pred_folder="./predictions/", tag= "test"))
-#print(run_all_datasets("./datasets/def/", model_name, params, comparison_pw,
+# print(run_all_datasets("./datasets/def/", model_name, params, comparison_pw,
 #                       training=True, use_val=True))
 
 # print_dataset(load_from_disk('./datasets/def/most_common_En1.0_10000_split0'))
@@ -416,7 +443,7 @@ print(run_all_datasets("./datasets/def/", model_name, params, comparison_pw, sav
 
 # datasetname=sys.argv[1]
 
-#run_other_tests('./models/', params, './datasets/other_datasets/', comparison_pw, )
+# run_other_tests('./models/', params, './datasets/other_datasets/', comparison_pw, )
 
 '''
 run_test_for_model(model, params, f"./datasets/def/{datasetname}", comparison_pw,
@@ -451,4 +478,3 @@ results, duration = param_grid_search(model_name, grids[model_name], params, './
 print(duration)
 print(results)
 '''
-

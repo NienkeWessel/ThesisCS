@@ -6,6 +6,7 @@ class MLModel(ABC):
         self.model = None
         self.params = params
         if 'model_loc' in self.params:
+            print("A model location is provided in the params")
             self.model_loc = self.params['model_loc']
         else:
             self.model_loc = None
