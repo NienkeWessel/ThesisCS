@@ -162,7 +162,7 @@ def print_dataset(dataset, split='train'):
 
 
 def initialize_model(model_name, params):
-    if model_name == "PassGPT":
+    if model_name == "PassGPT" or model_name == 'Pa':
         return PassGPT10Model(params)
     elif model_name == "Reformer":
         return ReformerModel(params)
@@ -289,6 +289,7 @@ def run_other_tests(models_folder_name, params, dataset_folder_name, comparison_
     for i, model_filename in enumerate(models_filenames):
         model_location = models_folder_name + model_filename
         print(f"Testing model {model_location} of type {model_types[i]}")
+        params['model_loc'] = model_location
         model = initialize_model(model_types[i], params)
         model.load_model(model_location)
 
@@ -306,6 +307,18 @@ def run_other_tests(models_folder_name, params, dataset_folder_name, comparison_
 
         for dataset in datasets:
             dataset_path = dataset_folder_name + dataset
+            save_path = save_pred_folder + dataset + ".csv"
+            data_and_pred = pd.read_csv(save_path, index_col=0)
+            headers = data_and_pred.columns
+            present = False
+            for header in headers:
+                if model_filename in header and tag in header:
+                    present = True
+
+            if present:
+                print(f"Skipped dataset {dataset_path} for model {model_filename}, as it is already in the file")
+                continue
+
             results[dataset + "+" + model_filename] = run_test_for_model(model, params, dataset_path, comparison_pw,
                                                                          use_val=False, training=False,
                                                                          save_pred_folder=save_pred_folder, tag=tag,
@@ -426,7 +439,9 @@ model = PassGPT10Model(params)
 
 #run_test_for_model(model, params, './datasets/other_datasets/most_common_Du1.0_10000', comparison_pw, training=False, load_filename='../uitlaatstedag/yolo/modelspart1/PassGPT_most_common_En0.5Sp0.5_1000_split0',)  
 
-print(run_all_datasets('./datasets/other_datasets/', model_name, params, comparison_pw, training=False, save_pred_folder="./predictions/", tag="testretry"))
+#print(run_all_datasets('./datasets/other_datasets/', model_name, params, comparison_pw, training=False, save_pred_folder="./predictions/", tag="testretry"))
+
+run_other_tests('../uitlaatstedag/yolo/modelspart1/', params, './datasets/other_datasets/', comparison_pw, save_pred_folder="./predictions/", tag="testretry")
 
 # DEZE WAS UITGECOMMEND:
 
