@@ -7,31 +7,54 @@ def read_stats_file(filename):
         stats = json.load(f)
     return stats
 
-def filter_filename_in_stats(stats, filename):
+def fix_stats_file(filename):
+    stats = read_stats_file(filename)
+    for modeltype in stats:
+        if modeltype[-1] == "-":
+            complete_modeltyp = modeltype + "base"
+            if complete_modeltyp not in stats:
+                continue
+            for modelname in stats[modeltype]:
+                for filename in stats[modeltype][modelname]:
+                    
+                    stats[modeltype + "base"][modelname][filename] = stats[modeltype][modelname][filename]
+    with open(filename, 'w') as f:
+        json.dump(stats, f, indent=4)
+
+#fix_stats_file("Stats.json")
+
+def filter_filename_in_stats(stats, filenames):
     new_stats = {}
     for modeltype in stats:
         for modeln in stats[modeltype]:
             for filen in stats[modeltype][modeln]:
-                if filen == filename:
+                print(filen)
+                if filen in filenames:
                     if modeltype not in new_stats:
                         new_stats[modeltype] = {}
                     if modeln not in new_stats[modeltype]:
                         new_stats[modeltype][modeln] = {}
-                    new_stats[modeltype][modeln][filename] = stats[modeltype][modeln][filename]
+                    new_stats[modeltype][modeln][filen] = stats[modeltype][modeln][filen]
     return new_stats
 
 def filter_modelname_in_stats(stats, modelname):
     new_stats = {}
     for modeltype in stats:
         for modeln in stats[modeltype]:
-            if modeln == modelname:
+            if modeln == modelname or modeln == modelname[:-4]:
                 if modeltype not in new_stats:
                     new_stats[modeltype] = {}
                 new_stats[modeltype][modelname] = stats[modeltype][modelname]
     return new_stats
 
-def filter_modeltype_from_stats(stats, modeltype):
-    return stats[modeltype]
+def filter_modeltype_in_stats(stats, modeltype):
+    new_stats = {}
+    for modelt in stats:
+        if modeltype in modelt or modeltype[:-4] == modelt:
+            if modeltype=="Bigram" and "Levenshtein" in modelt:
+                continue
+            new_stats[modelt] = stats[modelt]
+    return new_stats
 
 def transform_to_dataframe(stats):
     scores = ['accuracy', 'f1score', 'recall', 'precision']
@@ -55,6 +78,7 @@ def transform_to_dataframe(stats):
     df = pd.DataFrame(columns=['modeltype', 'modelname', 'filename']+ scores + combination + combination_counts)
 
     for model_type in stats:
+        rows = []
         print(model_type)
         for model_name in stats[model_type]:
             #print(model_name)
@@ -76,10 +100,10 @@ def transform_to_dataframe(stats):
                     for i, _ in enumerate(count_parts):
                         datarow.append(stats[model_type][model_name][file]['counts'][part][i])
 
-                # put it all in a dataframe row and append
-                #print(datarow)
-                df = df.append(pd.Series(datarow, index=df.columns), ignore_index=True)
+                rows.append(datarow)
+        df = pd.concat([df, pd.DataFrame(rows, columns=df.columns)], ignore_index=True)
     
+    print(df)
     df['split'] = df.apply(lambda row: row['modelname'].split("_")[-1], axis=1)
     df['size'] = df.apply(lambda row: row['modelname'].split("_")[-2], axis=1)
     df['model_language'] = df.apply(lambda row: lang_map[row['modelname'].split("_")[-3]], axis=1)
