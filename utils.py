@@ -93,6 +93,11 @@ def split_column_title(title):
     return title.split("-")
 
 
+lang_map = {
+    'En0.5Sp0.5' : "50% English, 50% Spanish",
+    'En1.0' : "100% English"
+}
+
 grids = {
     "DecisionTree": {
         'criterion': ('gini', 'entropy', 'log_loss'),
