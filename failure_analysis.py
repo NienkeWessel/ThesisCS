@@ -93,7 +93,7 @@ def apply_func_to_all_cats(function, df, column):
 
 def calc_stats_for_file(df, stats, file):
     models = df.columns[3:]
-    models = [split_column_title(model) for model in models if model[-1] != '0']
+    models = [split_column_title(model) for model in models if model[-1] != '0' or model[-1] != '0testretry']
 
     functions = [run_counts, percentage_of_lowercase_only, percentage_of_numeric_only]
     function_names = ['counts', 'percentage lowercase only', 'percentage numeric only']
@@ -170,6 +170,26 @@ def merge_all_prediction_files(folder1, folder2, saving_folder):
         merge_predictions(folder1 + file, folder2 + file, saving_folder + file)
 
 
+def filter_lang_file(filename):
+    file = pd.read_csv(filename, index_col=0)
+    file = file[file['label'] == 0.0]
+    file.to_csv(filename[:-4] + "_wordsonly.csv")
+
+def move_PassGPT_results(stats_file="Stats.json"):
+    with open(stats_file, 'r') as f:
+        stats = json.load(f)
+    
+    keys_to_be_deleted = []
+    for model_type in stats:
+        if model_type[-9:] == "testretry":
+            print(model_type)
+            stats[model_type[:-9]] = stats[model_type]
+            keys_to_be_deleted.append(model_type)
+    for k in keys_to_be_deleted:
+        del stats[k]
+    with open("Stats.json", 'w') as f:
+        json.dump(stats, f, indent=4)
+
 #merge_all_prediction_files("./predictionsSepFiles/predictionsFMs/", "./predictionsSepFiles/predictionsNNs/", "./predictions/")
 
 comparison_pw = load_from_disk("comparison_pw")
@@ -183,5 +203,12 @@ comparison_pw = load_from_disk("comparison_pw")
 #print(apply_func_to_all_cats(calc_mean_length, df, 'KNearestNeighborsModel-KNearestNeighborsMinkowskiModel_most_common_En0.5Sp0.5_1000_split2-long_passwords_16-Bigram'))
 
 #print(calc_stats_for_file(df))
-calc_stats_for_all_files("./predictions/", existing_stats_file="Stats.json")
 
+#language_files = ['most_common_Ar1.0_10000.csv', 'most_common_Du1.0_10000.csv', 'most_common_It1.0_10000.csv', 'most_common_Ru1.0_10000.csv', 'most_common_Tu1.0_10000.csv', 'most_common_Vi1.0_10000.csv']
+#for lang_file in language_files:
+#    filter_lang_file(f"./predictionsSepFiles/predictionsPassGPT/{lang_file}")
+
+# ----- MAIN FUNCTION ------
+calc_stats_for_all_files("./predictionsSepFiles/predictionsPassGPT/", existing_stats_file="Stats.json")
+
+#move_PassGPT_results()
