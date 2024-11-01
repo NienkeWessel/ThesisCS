@@ -117,17 +117,16 @@ class PytorchModel(NeuralNetworkModel):
 class LSTMModel(PytorchModel):
     def __init__(self, params) -> None:
         super().__init__(params)
+        lstm_input_size = 32
+        hidden_state_size = 256
+        self.batch_size = params['model_params']['batch_size']
+        num_sequence_layers = 2
+        output_dim = 2  # !!!!!!!!!!!!!!!!!!!!!!!!
+        self.rnn_type = 'LSTM'
+        self.model = BiRNN(lstm_input_size, hidden_state_size, batch_size=self.batch_size, output_dim=output_dim,
+                           num_layers=num_sequence_layers, rnn_type=self.rnn_type)
         if self.model_loc is not None:
-            self.model = self.load_model(self.model_loc)
-        else:
-            lstm_input_size = 32
-            hidden_state_size = 256
-            self.batch_size = params['model_params']['batch_size']
-            num_sequence_layers = 2
-            output_dim = 2  # !!!!!!!!!!!!!!!!!!!!!!!!
-            self.rnn_type = 'LSTM'
-            self.model = BiRNN(lstm_input_size, hidden_state_size, batch_size=self.batch_size, output_dim=output_dim,
-                               num_layers=num_sequence_layers, rnn_type=self.rnn_type)
+            self.load_model(self.model_loc)
 
     def __str__(self) -> str:
         return self.rnn_type + "Model"
