@@ -108,7 +108,7 @@ def run_test_for_model(model, params, test_file_name, comparison_pw, training=Tr
         else:
             data_and_pred[
                 str(model) + "-" + model_location.split("/")[-1] + "-" + test_file_last_part + 
-                "-" + tag] = predictions[:len(data_and_pred)].cpu()
+                "-" + tag] = predictions[:len(data_and_pred)]
         data_and_pred.to_csv(save_path)
 
     accuracy = model.calc_accuracy(test_data.y, predictions)
@@ -178,7 +178,7 @@ def initialize_model(model_name, params):
         return MultinomialNaiveBayes(params)
     elif model_name == "KNearestNeighbors":
         return KNearestNeighbors(params)
-    elif model_name == "KNearestNeighborsMinkowski":
+    elif model_name == "KNearestNeighborsMinkowski" or model_name == "KNearestNeighborsminkowski":
         params['model_params']['metric'] = 'minkowski'
         params['model_params']['p'] = 1
         return KNearestNeighbors(params)
@@ -299,7 +299,7 @@ def run_other_tests(models_folder_name, params, dataset_folder_name, comparison_
                 headers = data_test_Idunno.columns
                 present = False
                 for header in headers:
-                    if model_filename in header and tag in header:
+                    if model_filename in header and ((tag in header and tag != "Bigram") or (tag == 'Bigram' and tag in header and 'Levenshtein' not in header)):
                         present = True
                 if present:
                     print(f"Skipped file {model_filename}, as it is already in the file")
@@ -441,7 +441,7 @@ model = PassGPT10Model(params)
 
 #print(run_all_datasets('./datasets/other_datasets/', model_name, params, comparison_pw, training=False, save_pred_folder="./predictions/", tag="testretry"))
 
-run_other_tests('../uitlaatstedag/yolo/modelspart1/', params, './datasets/other_datasets/', comparison_pw, save_pred_folder="./predictions/", tag="testretry")
+run_other_tests('../uitlaatstedag/yolo/modelspart1/', params, './datasets/other_datasets/', comparison_pw, save_pred_folder="./predictions/", tag="Bigram")
 
 # DEZE WAS UITGECOMMEND:
 
