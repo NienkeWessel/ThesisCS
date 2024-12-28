@@ -28,7 +28,6 @@ def filter_filename_in_stats(stats, filenames):
     for modeltype in stats:
         for modeln in stats[modeltype]:
             for filen in stats[modeltype][modeln]:
-                print(filen)
                 if filen in filenames:
                     if modeltype not in new_stats:
                         new_stats[modeltype] = {}
