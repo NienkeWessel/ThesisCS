@@ -27,6 +27,16 @@ label_map = {
         'Ru1.0' : 'Russian',
         'Ar1.0' : 'Arabic',
         'En0.5Sp0.5' : 'English or English/Spanish',
+        'long_passwords_24.csv' : '24+ chars',
+
+}
+
+label_map_pw = {
+        'En1.0' : 'No min. length',
+        'En0.5Sp0.5' : 'No min. length',
+        'long_passwords_24.csv' : '24+ chars',
+        'long_passwords_32.csv' : '32+ chars',
+        'long_passwords_16.csv' : '16+ chars',
 }
 
 ordering = {
@@ -93,7 +103,7 @@ def transform_data(summary, model_name = "NaiveBayes"):
 
 def plot_data(table, title, type_of_plot="languages", highlight=None):
     # Code inspired by https://engineeringfordatascience.com/posts/matplotlib_subplots/
-    if type_of_plot == "modeltype" or type_of_plot == 'testing_language':
+    if type_of_plot == "modeltype" or type_of_plot == 'testing_set':
         scores = ['accuracy', 'recall', 'precision', 'f1score']
     else: 
         scores = ['accuracy', 'recall', 'precision', 'f1']
@@ -116,15 +126,15 @@ def plot_data(table, title, type_of_plot="languages", highlight=None):
            loc="lower center",   # Position of legend
            borderaxespad=0.1,    # Small spacing around legend box
            title=type_of_plot,  # Title for the legend
-           bbox_to_anchor = (0, -0.1, 1, 1),
-           ncol=4,
+           bbox_to_anchor = (0, -0.2, 1, 1),
+           ncol=3,
            frameon=False
            )
     plt.tight_layout()
     plt.savefig(f'{title}.png', bbox_inches='tight')
 
 
-def plot_languages_old_plots(table, title, languages=["100% English", "50% English, 50% Spanish"], highlight=None):
+def plot_languages_old_plots(table, title, languages=["100% English", "50% English, 50% Spanish"], highlight=None): # Unused
     label_map = {
         'En1.0' : '100% English or 50% English/50% Spanish',
         'Du1.0' : 'Dutch',
@@ -153,10 +163,10 @@ def plot_languages_old_plots(table, title, languages=["100% English", "50% Engli
         for j, lang in enumerate(languages):
             if lang == main_lang:
                 alpha = 1.0
-                axs[i] = sns.lineplot(data=language_specific_dfs[j], x="size", y=score, ax=axs[i], hue="testing_language", style="testing_language", palette=palette2, alpha=alpha, linewidth = 3) 
+                axs[i] = sns.lineplot(data=language_specific_dfs[j], x="size", y=score, ax=axs[i], hue="testing_set", style="testing_set", palette=palette2, alpha=alpha, linewidth = 3) 
             else:
                 alpha = 0.4
-                axs[i] = sns.lineplot(data=language_specific_dfs[j], x="size", y=score, ax=axs[i], errorbar=None, hue="testing_language", style="testing_language", palette=palette2, alpha=alpha)
+                axs[i] = sns.lineplot(data=language_specific_dfs[j], x="size", y=score, ax=axs[i], errorbar=None, hue="testing_set", style="testing_set", palette=palette2, alpha=alpha)
 
         
         axs[i].get_legend().remove()
@@ -167,10 +177,10 @@ def plot_languages_old_plots(table, title, languages=["100% English", "50% Engli
     testing_languages = languages_in_label_map[1:-1]
     language_specific_dfs = []
     for lang in testing_languages:
-        language_specific_dfs.append(table[table["testing_language"] == lang])#.sort_values(by='testing_language', ascending=True, inplace=True, key=lambda s: s.apply(['En1.0', 'En0.5Sp0.5', 'Ar1.0', 'Du1.0', 'It1.0', 'Ru1.0', 'Tu1.0', 'Vi1.0'].index)))
+        language_specific_dfs.append(table[table["testing_set"] == lang])#.sort_values(by='testing_language', ascending=True, inplace=True, key=lambda s: s.apply(['En1.0', 'En0.5Sp0.5', 'Ar1.0', 'Du1.0', 'It1.0', 'Ru1.0', 'Tu1.0', 'Vi1.0'].index)))
         print(language_specific_dfs[-1])
     
-    language_specific_dfs.append(table[(table["testing_language"] == 'En1.0') | (table["testing_language"] == 'En0.5Sp0.5')])
+    language_specific_dfs.append(table[(table["testing_set"] == 'En1.0') | (table["testing_set"] == 'En0.5Sp0.5')])
     print(len(language_specific_dfs))
 
     for i, test_lang in enumerate(language_specific_dfs):
@@ -204,7 +214,7 @@ def plot_tiny_language_plots(table, title, save_folder, languages=["100% English
 
     for i, testing_lang in enumerate(label_map_plot):
         axs[i] = plt.subplot(math.ceil(len(label_map_plot)/2), 2, i+1)
-        axs[i] = sns.lineplot(data=table[table["testing_language"] == testing_lang].sort_values(by=['size', 'model_language'], ascending=True, key=lambda s: 
+        axs[i] = sns.lineplot(data=table[table["testing_set"] == testing_lang].sort_values(by=['size', 'model_language'], ascending=True, key=lambda s: 
                                                                                                 s.apply(['1000', '10000', '100000', '500000', '100% English', '50% English, 50% Spanish'].index)), 
                                                                                                 x="size", y=score, ax=axs[i], hue="model_language", style="model_language", palette=palette2, alpha=1.0, linewidth = 3) 
         axs[i].get_legend().remove()
@@ -228,7 +238,7 @@ def plot_tiny_language_plots(table, title, save_folder, languages=["100% English
     plt.tight_layout()
     plt.savefig(f'{save_folder}/{title}.png', bbox_inches='tight')
 
-
+''' Original specific one, trying to see if we can generalize it to also work for longer passwords
 def plot_languages_two_plots(table, title, save_folder, languages=["100% English", "50% English, 50% Spanish"], highlight=None):
     
     score = 'adap_accuracy'
@@ -245,12 +255,6 @@ def plot_languages_two_plots(table, title, save_folder, languages=["100% English
         language_specific_dfs.append(table[table["model_language"] == lang].sort_values(by=['size', 'testing_language'], ascending=True, key=lambda s: s.apply(['1000', '10000', '100000', '500000', 'En1.0', 'En0.5Sp0.5', 'Ar1.0', 'Du1.0', 'It1.0', 'Ru1.0', 'Tu1.0', 'Vi1.0'].index)))
         #print("Printing hereeeee")
         #print(language_specific_dfs[-1])
-
-    '''
-    palette3 = []
-    for a, b, c in palette2:
-        palette3.append((a, b, max(c-0.3, 0.0)))
-    '''
 
     for i, main_lang in enumerate(languages):
         axs[i] = plt.subplot(len(languages), 1, i+1)
@@ -281,6 +285,77 @@ def plot_languages_two_plots(table, title, save_folder, languages=["100% English
            )
     plt.tight_layout()
     plt.savefig(f'{save_folder}/{title}.png', bbox_inches='tight')
+'''
+
+def plot_otherdatasets_two_plots(table, title, save_folder, languages=["100% English", "50% English, 50% Spanish"], plt_type='languages', highlight=None):
+    settings = {
+        'languages': {
+            'score': 'adap_accuracy',
+            'score_label' : 'Accuracy',
+            'order' : ['En1.0', 'En0.5Sp0.5', 'Ar1.0', 'Du1.0', 'It1.0', 'Ru1.0', 'Tu1.0', 'Vi1.0'],
+            'errorbar' : None,
+            'label_map' : label_map
+        },
+        'long_pw' : {
+            'score': 'recall',
+            'score_label' : 'Recall',
+            'order' : ['En1.0', 'En0.5Sp0.5', 'long_passwords_16.csv', 'long_passwords_24.csv', 'long_passwords_32.csv'],
+            'errorbar' : ('ci', 95),
+            'label_map' : label_map_pw
+        }
+    }
+    score = settings[plt_type]['score']
+    fig, axs = plt.subplots(len(languages), 1, figsize=(15,15), sharey=True)
+    axs = axs.ravel()
+    plt.suptitle(title, fontsize=30, y=0.98)
+    print(table)
+    #table.to_csv("languagefile_test.csv")
+
+    language_specific_dfs = []
+    for lang in languages:
+        #print(lang)
+        #print(language_specific_dfs)
+        language_specific_dfs.append(table[table["model_language"] == lang].sort_values(by=['size', 'testing_set'], ascending=True, key=lambda s: s.apply((['1000', '10000', '100000', '500000'] + settings[plt_type]['order']).index)))
+        #print("Printing hereeeee")
+        #print(language_specific_dfs[-1])
+
+    '''
+    palette3 = []
+    for a, b, c in palette2:
+        palette3.append((a, b, max(c-0.3, 0.0)))
+    '''
+
+    for i, main_lang in enumerate(languages):
+        axs[i] = plt.subplot(len(languages), 1, i+1)
+
+        for j, lang in enumerate(languages):
+            if lang == main_lang:
+                alpha = 1.0
+                axs[i] = sns.lineplot(data=language_specific_dfs[j], x="size", y=score, ax=axs[i], hue="testing_set", style="testing_set", palette=palette2, alpha=alpha, linewidth = 3, errorbar=settings[plt_type]['errorbar']) 
+            #else:
+            #    alpha = 0.4
+            #    axs[i] = sns.lineplot(data=language_specific_dfs[j], x="size", y=score, ax=axs[i], errorbar=None, hue="testing_set", style="testing_set", palette=palette2, alpha=alpha)
+
+        
+        axs[i].get_legend().remove()
+        axs[i].set(title=main_lang + " models")
+        axs[i].set_ylabel(settings[plt_type]['score_label'])
+    
+    lines, labels = fig.axes[0].get_legend_handles_labels()
+    labels = [settings[plt_type]['label_map'][label] for label in labels]
+    fig.legend(lines,     # The line objects
+           labels,   # The labels for each line
+           loc="lower center",   # Position of legend
+           borderaxespad=0.1,    # Small spacing around legend box
+           title="Testing set",  # Title for the legend
+           bbox_to_anchor = (0, -0.1, 1, 1),
+           ncol=4,
+           frameon=False
+           )
+    plt.tight_layout()
+    plt.savefig(f'{save_folder}/{title}.png', bbox_inches='tight')
+
+
 
 def collect_all_files_and_filter(folder="ValSetResults/", lang=None):
     files = find_files_in_folder(folder)
@@ -298,6 +373,7 @@ def collect_all_files_and_filter(folder="ValSetResults/", lang=None):
 def plot_diff_models(folder="ValSetResults/", lang=None, highlight=None):
     df = collect_all_files_and_filter(folder=folder, lang=lang)
     plot_data(df, "Scores of models", type_of_plot="model", highlight=highlight)
+
 
 def plot_feature_effects(folder="ValSetResults/", lang=None):
     files = find_files_in_folder(folder)
@@ -413,7 +489,7 @@ def filter_feature_model_type(row, type):
 def filter_model_type(row, type):
     return type in row['modeltype']
 
-def plot_all_languages_per_model(location):
+def plot_all_languages_per_model(location):   # Unused? 
     # Read in all language files as dataframes
     # Get all headers from one of the dataframes
 
@@ -456,15 +532,21 @@ def generate_base_set_filenames():
     return filenames
 
 def extract_testing_lang(filename):
-    return filename.split("_")[2]
+    if 'long_password' in filename:
+        return filename
+    else:
+        return filename.split("_")[2]
 
-def get_stats_df_from_files(files, modelname, folder):
+def get_stats_df_from_files(files, modelname, folder, include_base=True):
     stats_filename = folder + modelname + "_stats.csv"
     if not exists(stats_filename):
         stats = read_stats_file("Stats.json")
-        base_filenames = generate_base_set_filenames()
         filtered_stats = filter_modeltype_in_stats(stats, modelname)
-        filtered_stats = filter_filename_in_stats(filtered_stats, files + base_filenames)
+        if include_base:
+            base_filenames = generate_base_set_filenames()
+            filtered_stats = filter_filename_in_stats(filtered_stats, files + base_filenames)
+        else:
+            filtered_stats = filter_filename_in_stats(filtered_stats, files)
         print(filtered_stats)
         df = transform_to_dataframe(filtered_stats)
         df.to_csv(stats_filename)
@@ -472,8 +554,19 @@ def get_stats_df_from_files(files, modelname, folder):
         df = pd.read_csv(stats_filename, index_col=0)
     return df
 
+def generate_questionnaire_stats(folder,testtype="questionnaire_data.csv"):
+    stats_file_loc = folder+testtype[:-4] + "stats.csv"
+    if not exists(stats_file_loc):
+        stats = read_stats_file("Stats.json")
+        questionnaire_stats = filter_filename_in_stats(stats, [testtype])
+        df = transform_to_dataframe(questionnaire_stats)
+        df.to_csv(stats_file_loc)
+    else: 
+        df = pd.read_csv(stats_file_loc, index_col=0)
+    return df
+
 def recompute_accuracy(row, folder='predictions/'):
-    if row['testing_language'] == 'En1.0' or row['testing_language'] == 'En0.5Sp0.5':
+    if row['testing_set'] == 'En1.0' or row['testing_set'] == 'En0.5Sp0.5':
         #print(row)
         df = pd.read_csv(folder + row['filename'])
         nr_of_pw = df['label'].sum()
@@ -491,25 +584,64 @@ def plot_languagesdata_for_model(modelname, title, model_type, folder="./langplo
     if model_type != "NN":
         df = df[df.apply(filter_feature_model_type, args=(model_type,), axis=1)]
     print(df)
-    df['testing_language'] = df['filename'].apply(extract_testing_lang)
+    df['testing_set'] = df['filename'].apply(extract_testing_lang)
     df['adap_accuracy'] = df.apply(recompute_accuracy, axis=1)
     df.sort_values(by='size', ascending=True, inplace=True)
     #df = df[df.apply(filter_model_type, args=(modelname,), axis=1)]
     print(df)
-    plot_languages_two_plots(df, title, save_folder)
+    plot_otherdatasets_two_plots(df, title, save_folder)
     plot_tiny_language_plots(df, title+" (per language)", save_folder)
 
 
-def plot_longpasswords(folder="./longpasswordfiles/"):
-    language_files = ['long_passwords_16.csv', 'long_passwords_24.csv', 'long_passwords_32.csv']
-    df = get_stats_df_from_files(language_files, modelname, folder)
+def plot_longpasswords(modelname, title, model_type, folder="./longpasswordfiles/", save_folder="./passwordGraphs"):
+    password_files = ['long_passwords_16.csv', 'long_passwords_24.csv', 'long_passwords_32.csv']
+    df = get_stats_df_from_files(password_files, modelname, folder)
+    df['size'] = df.apply(lambda row: str(row['size']), axis=1)
+    print(df)
+    #df.to_csv("languagefile_test2.csv") # for debugging purposes
+    if model_type != "NN":
+        df = df[df.apply(filter_feature_model_type, args=(model_type,), axis=1)]
+    print(df)
+    df['testing_set'] = df['filename'].apply(extract_testing_lang)
+    #df['adap_accuracy'] = df.apply(recompute_accuracy, axis=1)
+    df.sort_values(by='size', ascending=True, inplace=True)
+    #df = df[df.apply(filter_model_type, args=(modelname,), axis=1)]
+    print(df)
+    plot_otherdatasets_two_plots(df, title, save_folder, plt_type='long_pw')
 
 
-# Hypothesis 1: difference between bigram and non-bigram models will be mostly in the lowercase only words
-def check_hypothesis_bigram_helps_find_lowercase(stats_filefolder="./langplotfiles/", model_name="AdaBoostModel"):
-    base_filename = stats_filefolder + model_name + "-base_stats.csv"
-    bigram_filename = stats_filefolder + model_name + "-base_stats.csv"
-    df = pd.read_csv(stats_filename, index_col=0)
+def filter_models_for_barplot(row, filters):
+    return row['modeltype'] not in filters
+
+def plot_questionnaire(file_to_plot= 'questionnaire_data.csv', folder="./questionnairefiles/", save_folder="./questionnaireGraphs"):
+    df = generate_questionnaire_stats(folder, testtype=file_to_plot)
+    df = df[df.apply(filter_models_for_barplot, args=(['PassGPTModel-1testretry', 'PassGPTModel-0testretry', 'PassGPTModel-0', 'LSTMModel-0',
+                                                       'KNearestNeighborsModel-Bigram', 'KNearestNeighborsModel-BigramLevenshtein', 'KNearestNeighborsModel-Levenshtein', 'KNearestNeighborsminkowksiModel-Bigram'], ), axis=1)]
+    df['size'] = df.apply(lambda row: str(row['size']), axis=1)
+    print(df)
+    df.sort_values(by=['size', 'modeltype'], ascending=True, inplace=True)
+
+    scores = ['accuracy', 'recall', 'precision', 'f1score']
+    for score in scores:
+        sizes = df['size'].unique()
+        fig, axs = plt.subplots(len(sizes), 1, figsize=(15,25), sharey=True, sharex=True)
+        axs = axs.ravel()
+        plt.suptitle(f"Questionnaire data ({score})", fontsize=30, y=0.98)
+        for i, size in enumerate(sizes):
+            df_size = df[df['size'] == size]
+            
+            axs[i] = plt.subplot(len(sizes), 1, i+1)
+            axs[i] = sns.barplot(df_size, x='modeltype', y=score)
+            axs[i].set(title=size)
+            axs[i].set(ylim=(0.0, 1.0))
+            plt.xticks(rotation=90)
+        plt.tight_layout()
+        plt.savefig(f'{save_folder}/{file_to_plot[:-4]}-{score}.png', bbox_inches='tight')
+
+    
+
+
+
 
 
 #get_top_hyperparameters("./gridsearchresults/", "RandomForest", model_type='all', topn=1)
@@ -522,7 +654,7 @@ table = transform_data(results)
 plot_data(table, "Gaussian Naive Bayes")
 '''
 
-#plot_diff_models(folder="ValSetResults/featuremodelsbase/", lang="100% English")
+plot_diff_models(folder="ValSetResults/basemodels/", lang="100% English")
 #plot_feature_effects(lang="100% English")
 
 #plot_differences(folder="ValSetResults/all/")
@@ -545,7 +677,8 @@ models = {
         'type' : 'NN',
     }
 }
-feature_models = ['AdaBoost']
+feature_models = ['AdaBoost', 'RandomForest', 'DecisionTree',
+                  'MultinomialNB', 'GaussianNB']
 
 for feature_model in feature_models:
     model_types = ['base', 'Bigram', 'BigramLevenshtein', 'Levenshtein']
@@ -564,6 +697,18 @@ for feature_model in feature_models:
 
 
 model = 'AdaBoost-Bigram'
-plot_languagesdata_for_model(models[model]['file'], f"{models[model]['title']} on different languages", models[model]['type'])
+#plot_languagesdata_for_model(models[model]['file'], f"{models[model]['title']} on different languages", models[model]['type'])
+#plot_questionnaire(file_to_plot= 'Usernames_10000.csv', folder="./questionnairefiles/", save_folder="./questionnaireGraphs")
+#for model in models:
+#    plot_longpasswords(models[model]['file'], f"{models[model]['title']} on different languages", models[model]['type'])
+
+#stats = read_stats_file("Stats.json")
+#print(stats['KNearestNeighborscosineModel-'])
+
+#print(list(models.keys())[14:])
+
+#for model in models:#list(models.keys())[14:]:
+#    plot_languagesdata_for_model(models[model]['file'], f"{models[model]['title']} on different languages", models[model]['type'])
+
 
 
