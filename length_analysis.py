@@ -23,7 +23,7 @@ def analyze_file_for_length(filename, modelname, xmax=20, plottitle=None):
 
     #g.set_axis_labels("Length", "Accuracy")
     handles, _ = plt.gca().get_legend_handles_labels()
-    plt.legend(handles=handles, labels = ['Words', 'Passwords'])
+    plt.legend(handles=handles, labels = ['Words', 'Passwords'], loc='lower left')
 
     if plottitle is not None:
         title = plottitle
@@ -149,5 +149,29 @@ def analyze_file_for_lowercase(filename, plottitle=None):
     plt.savefig(f'failureanalysis/{file[:-4]}-{modelname}.png', bbox_inches='tight')
     '''
 
-#analyze_file_for_length("./predictions/most_common_En1.0_1000_split2.csv", modelname='LSTMModel--most_common_En1.0_1000_split2-1', plottitle="LSTM (size 1000, split 2)")
-analyze_file_for_lowercase("./predictionsSepFiles/predictionsBigrams/most_common_En1.0_1000")#_split2.csv")
+def analyze_file_for_totals_length(filename, xmax=20, plottitle=None):
+    df = pd.read_csv(filename, index_col=0)
+    df['length'] = df['text'].apply(lambda x: len(str(x)))
+    print(df)
+
+    # Filter out lengths higher than xmax to keep plot feasible (otherwise x-axis is to large)
+    df = df[df['length'] <= xmax]
+
+    g = sns.countplot(df, x='length', hue="label", alpha=0.6)
+
+    handles, _ = plt.gca().get_legend_handles_labels()
+    plt.legend(handles=handles, labels = ['Words', 'Passwords'])
+
+    if plottitle is not None:
+        title = plottitle
+    else:
+        title = filename
+
+    g.set(xlabel ="Length", ylabel = "Count", title=title)
+
+    file = filename.split("/")[-1]
+    plt.savefig(f'failureanalysis/{file[:-4]}-totals.png', bbox_inches='tight')
+
+#analyze_file_for_length("./predictions/most_common_En1.0_500000_split2.csv", modelname='KNearestNeighborsminkowskiModel--most_common_En1.0_500000_split2-', plottitle="KNN Minkowski (size 500000, split 2)")
+analyze_file_for_totals_length("./predictions/most_common_Ar1.0_10000_wordsonly.csv", plottitle="totals Arabic")
+#analyze_file_for_lowercase("./predictionsSepFiles/predictionsBigrams/most_common_En1.0_1000")#_split2.csv")
