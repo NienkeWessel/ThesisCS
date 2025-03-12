@@ -2,7 +2,7 @@ import json
 import numpy as np
 from sklearn.model_selection import train_test_split
 from datasets import DatasetDict, load_from_disk, Dataset
-
+from random import sample
 
 def read_words_most_common(filename, nr_lines, words=None):
     if words is None:
@@ -10,6 +10,21 @@ def read_words_most_common(filename, nr_lines, words=None):
     with open(filename, "r") as file:
         i = 0
         while i < nr_lines:
+            word = next(file).strip().split("\t")[1]
+            if (len(word) > 1 or word.isalnum()) and word not in words:
+                words.add(word)
+                i += 1
+    return words
+
+
+def read_words_most_common_from_start(filename, nr_lines, start_line=0, words=None):
+    if words is None:
+        words = set()
+    with open(filename, "r") as file:
+        i = 0
+        while i < start_line:
+            i += 1
+        while i < start_line + nr_lines:
             word = next(file).strip().split("\t")[1]
             if (len(word) > 1 or word.isalnum()) and word not in words:
                 words.add(word)
@@ -197,6 +212,31 @@ def read_usernames(username_file, nr_lines, save=False, comp_pw=None):
         data.save_to_disk(save_filename)
     return
 
+
+def create_new_hyperparsearch_sets(pw_filename, word_filename, val_sizes, save = True):
+    passwords, _ = read_passwords(pw_filename, 1, 1270000, comp_pw=None)
+    
+
+    for val_size in val_sizes:
+        pw = sample(passwords, val_size)
+        words = read_words_most_common_from_start(word_filename, val_size, start_line=500000, words=None)
+    
+        all_words = pw + list(words)
+        labels = (np.concatenate((np.ones(len(pw)), np.zeros(len(words))), axis=0)).tolist()
+
+        dataset = Dataset.from_dict({
+            'text': all_words,
+            'label': labels
+        })
+
+        if save:
+            save_filename = 'New_hyperparset' + "_" + str(val_size)
+            data = DatasetDict({
+                    'validation': dataset,
+                })
+            data.save_to_disk(save_filename)
+    return
+
 #pw_filename = "10-million-password-list-top-1000000.txt"
 pw_filename = "xato-net-10-million-passwords.txt"
 username_file = "xato-net-10-million-usernames.txt"
@@ -236,5 +276,8 @@ lang_split = {
 #for nr_lines in nr_lines_list:
 #    load_data(pw_filename, languages, lang_files, lang_split, 0, nr_lines, save=True, comp_pw=comparison_pw)
 
-create_lang_testset("random_other_pws.txt", languages, lang_files, lang_split, 10000, save=True, comp_pw=comparison_pw)
+#create_lang_testset("random_other_pws.txt", languages, lang_files, lang_split, 10000, save=True, comp_pw=comparison_pw)
 #read_usernames(username_file, 10000, save=True, comp_pw=None)
+
+val_sizes = [150, 1500, 15000, 75000]
+create_new_hyperparsearch_sets("random_other_pws.txt","eng_news_2020_1M-words.txt", val_sizes)
