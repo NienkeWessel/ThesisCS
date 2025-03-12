@@ -68,6 +68,7 @@ def run_test_for_model(model, params, test_file_name, comparison_pw, training=Tr
 
     if training:
         train_data = transform_data(model, dataset['train'], comparison_pw, 'training')
+        print(len(train_data.X), len(train_data.X[0]))
     if use_val:
         test_data = transform_data(model, dataset['validation'], comparison_pw, 'validation')
     else:
@@ -162,7 +163,16 @@ def print_dataset(dataset, split='train'):
 
 
 def initialize_model(model_name, params):
-    if model_name == "PassGPT" or model_name == 'Pa':
+    '''
+    Initializes a model based on the modelname passed to this function 
+
+    model_name: the name of the model 
+    params: model parameters as specified in the documentation
+    return: the model of the specified type, or None and a warning if it did not recognize the model type. 
+    '''
+    if model_name == "PassGPT" or model_name == 'Pa': 
+        # The Pa is because sometimes the model is just PassGPT without Model after it, and then removing
+        # the last five characters just leaves 'Pa'. Yes, it is messy.
         return PassGPT10Model(params)
     elif model_name == "Reformer":
         return ReformerModel(params)
@@ -325,10 +335,44 @@ def run_other_tests(models_folder_name, params, dataset_folder_name, comparison_
                                                                          model_location=model_location)
 
     print(results)
-    with open(model_name, 'w') as f:
+    with open("runothertestresults", 'w') as f:
         json.dump(results, f, indent=4)
     return results
 
+def get_probabilities_data(model_name, params, test_file_name, load_filename, save_pred_folder, tag):
+    model = initialize_model(model_name, params)
+    print(f"Running test on model {model} with file {test_file_name}")
+
+    dataset = load_from_disk(test_file_name)
+
+    train_data = transform_data(model, dataset['train'], comparison_pw, 'training')
+    print(len(train_data.X), len(train_data.X[0]))
+    model.train(train_data.X, train_data.y, params=params['train_params'])
+    test_data = transform_data(model, dataset['test'], comparison_pw, 'test')
+
+    predictions = model.model.predict_proba(test_data.X)
+
+    model_location = load_filename
+
+    print("Got here!")
+    if save_pred_folder is not None:
+        # if nonexistent, build df with words, labels and predictions
+        # if existent, load from csv and add column, save again
+        test_file_last_part = test_file_name.split('/')[-1]
+        files_in_save_pred_folder = find_files_in_folder(save_pred_folder)
+        save_path = save_pred_folder + test_file_last_part + ".csv"
+        print(save_path)
+        if test_file_last_part + ".csv" not in files_in_save_pred_folder:
+            split = "test"
+            dataset[split].to_pandas().to_csv(save_path)
+
+        data_and_pred = pd.read_csv(save_path, index_col=0)
+        print("Got here!")
+        print(data_and_pred)
+        print(model_location.split("/")[-1] + tag)
+        data_and_pred[model_location.split("/")[-1] + "-0" + tag] = predictions[:len(data_and_pred), 0]
+        data_and_pred[model_location.split("/")[-1] + "-1" + tag] = predictions[:len(data_and_pred), 1]
+        data_and_pred.to_csv(save_path)
 
 # files = find_files_in_folder('datasets/def')
 # print(files)
@@ -415,15 +459,19 @@ params = {'data_params': data_params,
 # model = LSTMModel()
 
 # model = PassGPT10Model(params, load_filename="./models/PassGPT")
-model_name = "PassGPT"
-params['model_loc'] = '../uitlaatstedag/yolo/modelspart1/PassGPT_most_common_En0.5Sp0.5_1000_split0'
-model = PassGPT10Model(params)
+#model_name = "PassGPT"
+#params['model_loc'] = '../uitlaatstedag/yolo/modelspart1/PassGPT_most_common_En0.5Sp0.5_1000_split0'
+#model = PassGPT10Model(params)
 # model_name = "AdaBoost"
-# model_name = "DecisionTree"
+model_name = "NaiveBayes"
 #model_name = "LSTM"
 # model_name = "MultinomialNaiveBayes"
+
+
 #model = initialize_model(model_name, params)
-# run_test_for_model(model, params, './datasets/def/most_common_En1.0_500000_split1', comparison_pw)
+#run_test_for_model(model, params, './datasets/def/most_common_En1.0_100000_split1', comparison_pw, training=True)
+
+
 # print(model.model.get_depth())
 # model.plot_tree("Tree_most_common_En1.0_500000_split1")
 # run_test_for_model(model, params, './datasets/def/most_common_En1.0_1000_split0', comparison_pw,
@@ -441,7 +489,7 @@ model = PassGPT10Model(params)
 
 #print(run_all_datasets('./datasets/other_datasets/', model_name, params, comparison_pw, training=False, save_pred_folder="./predictions/", tag="testretry"))
 
-run_other_tests('../uitlaatstedag/yolo/modelspart1/', params, './datasets/other_datasets/', comparison_pw, save_pred_folder="./predictions/", tag="Bigram")
+#run_other_tests('../uitlaatstedag/yolo/modelspart1/', params, './datasets/other_datasets/', comparison_pw, save_pred_folder="./predictions/", tag="Bigram")
 
 # DEZE WAS UITGECOMMEND:
 
@@ -465,6 +513,9 @@ run_test_for_model(model, params, f"./datasets/def/{datasetname}", comparison_pw
                    save_filename=f"./models/PassGPT{datasetname}")
 '''
 
+for size in ['1000', '10000', '100000', '500000']:
+    get_probabilities_data(model_name, params, f"./datasets/def/most_common_En1.0_{size}_split0", f"./models/{model_name}Model_most_common_En1.0_{size}_split0", './pred_proba/', "")
+
 # ------------------------------- Plotting decision tree -------------------------------
 '''
 model_name = "DecisionTree"
@@ -477,16 +528,16 @@ plot_decision_tree(model, './datasets/most_common_En1.0_10000_split0', params)
 
 
 '''
-dataset_files = find_files_in_folder('datasets/def')
+dataset_files = find_files_in_folder('datasets/hyperparsearch')
 model_name = "MultinomialNaiveBayes"
 print(dataset_files)
 for file in dataset_files:
     print(f"Running gridsearch for {file}")
-    results, duration = param_grid_search(model_name, grids[model_name], params, './datasets/def/' + file)
+    results, duration = param_grid_search(model_name, grids[model_name], params, './datasets/hyperparsearch/' + file)
     print(duration)
     print(results)
-
-
+'''
+'''
 model_name = "RandomForest"
 file = "most_common_En0.5Sp0.5_500000_split1"
 results, duration = param_grid_search(model_name, grids[model_name], params, './datasets/def/' + file)
