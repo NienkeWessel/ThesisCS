@@ -56,7 +56,7 @@ def filter_modeltype_in_stats(stats, modeltype):
     return new_stats
 
 def transform_to_dataframe(stats):
-    scores = ['accuracy', 'f1score', 'recall', 'precision']
+    scores = ['accuracy', 'f1score', 'recall', 'precision', 'weightedfscore', 'weightedfscore5']
     parts = ['TP', 'FP', 'TN', 'FN']
     stats_names = ['percentage lowercase only', 'percentage numeric only']
 
