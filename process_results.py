@@ -104,9 +104,9 @@ def transform_data(summary, model_name = "NaiveBayes"):
 def plot_data(table, title, type_of_plot="languages", highlight=None):
     # Code inspired by https://engineeringfordatascience.com/posts/matplotlib_subplots/
     if type_of_plot == "modeltype" or type_of_plot == 'testing_set':
-        scores = ['accuracy', 'recall', 'precision', 'f1score']
+        scores = ['accuracy', 'recall', 'precision', 'weightedfscore5']
     else: 
-        scores = ['accuracy', 'recall', 'precision', 'f1']
+        scores = ['accuracy', 'recall', 'precision', 'weightedfscore5']
     fig, axs = plt.subplots(math.ceil(len(scores)/2), 2, figsize=(15,9), sharey=True)
     axs = axs.ravel()
     plt.suptitle(title, fontsize=30, y=0.98)
@@ -340,6 +340,7 @@ def plot_otherdatasets_two_plots(table, title, save_folder, languages=["100% Eng
         axs[i].get_legend().remove()
         axs[i].set(title=main_lang + " models")
         axs[i].set_ylabel(settings[plt_type]['score_label'])
+        axs[i].set(ylim=(0, 1))
     
     lines, labels = fig.axes[0].get_legend_handles_labels()
     labels = [settings[plt_type]['label_map'][label] for label in labels]
@@ -358,6 +359,14 @@ def plot_otherdatasets_two_plots(table, title, save_folder, languages=["100% Eng
 
 
 def collect_all_files_and_filter(folder="ValSetResults/", lang=None):
+    """
+    Calculates the averages from runs on multiple files. Assumes the last part of the original file name is the split
+    number and can thus be discarded.
+
+    :param filename: folder with the results in dictionary format
+    :param lang: language filter. If None no language filter
+    :return: a dataframe based on the on the results in the dictionary
+    """
     files = find_files_in_folder(folder)
     results = []
     for file in files:
@@ -375,7 +384,7 @@ def plot_diff_models(folder="ValSetResults/", lang=None, highlight=None):
     plot_data(df, "Scores of models", type_of_plot="model", highlight=highlight)
 
 
-def plot_feature_effects(folder="ValSetResults/", lang=None):
+def plot_feature_effects(folder="ValSetResults/all/", lang=None):
     files = find_files_in_folder(folder)
     feature_models = ['AdaBoost', 'DecisionTree', 'RandomForest', 'KNearestNeighborsCosine', 'KNearestNeighborsMinkowski', 'MultinomialNaiveBayes', 'NaiveBayes']
     for feature_model in feature_models:
@@ -393,6 +402,7 @@ def plot_feature_effects(folder="ValSetResults/", lang=None):
                     model_name = file[len(feature_model):]
                 results.append(transform_data(json.load(f), model_name=model_name))
         df = pd.concat(results)
+        df['weightedfscore5'] = df.apply(lambda x : weightedfscore5(x), axis=1)
         title = f"Scores of {feature_model}"
         if lang is not None:
             df = df[df["languages"] == lang]
@@ -445,28 +455,42 @@ def get_top_hyperparameters(folder_name, model_name, model_type="all", topn = 1)
     for parameter in grids[model_name]:
         print(top_scores['param_' + parameter].value_counts())
 
+def weightedfscore5(row, beta=5):
+    recall = row['recall']
+    precision = row['precision']
+    return (1 + beta*beta) * (precision * recall) / ( (beta*beta *precision) + recall)
 
 def plot_differences(folder="ValSetResults/", lang1='100% English', lang2='50% English, 50% Spanish'):
     df = collect_all_files_and_filter(folder=folder, lang=None)
-    scores = ['accuracy', 'recall', 'precision', 'f1']
+    df['weightedfscore5'] = df.apply(lambda x : weightedfscore5(x), axis=1)
+    scores = ['accuracy', 'recall', 'precision', 'f1', 'weightedfscore5']
     for score in scores:
         sizes = df['size'].unique()
         fig, axs = plt.subplots(len(sizes), 1, figsize=(15,25), sharey=True, sharex=True)
         axs = axs.ravel()
-        plt.suptitle(f"Difference between 100% English and 50% English, 50% Spanish for {score}", fontsize=30, y=0.98)
+        if score == "weightedfscore5":
+            sc = 'f-score'
+        else:
+            sc = score
+        plt.suptitle(f"Difference between 100% English and 50% English, 50% Spanish for {sc}", fontsize=30, y=0.98)
         for i, size in enumerate(sizes):
             df_size = df[df['size'] == size]
-            df_lang1 = df_size[df_size["languages"] == lang1]
-            df_lang2 = df_size[df_size["languages"] == lang2]
+            df_lang1 = df_size[df_size["languages"] == lang1][scores + ['split', 'model']]
+            df_lang2 = df_size[df_size["languages"] == lang2][scores + ['split', 'model']]
+            print(df_lang1)
+            print(df_lang2)
             difference_languages = df_lang1.groupby(['model','split']).mean()-df_lang2.groupby(['model', 'split']).mean()
             difference_languages.reset_index(inplace=True)
             print(difference_languages)
             
             axs[i] = plt.subplot(len(sizes), 1, i+1)
-            axs[i] = sns.barplot(difference_languages, x='model', y=score)
+            axs[i] = sns.barplot(difference_languages, x='model', y=score, hue='model')
             #axs[i].get_legend().remove()
             axs[i].set(title=size)
-            axs[i].set_ylabel(f"{score} difference")
+            if score == 'weightedfscore5':
+                axs[i].set_ylabel('weighted f dif')
+            else:
+                axs[i].set_ylabel(f"{score} difference")
             plt.xticks(rotation=90)
         plt.tight_layout()
         plt.savefig(f'LanguageDifferencesTest{score}.png', bbox_inches='tight')
@@ -554,6 +578,20 @@ def get_stats_df_from_files(files, modelname, folder, include_base=True):
         df = pd.read_csv(stats_filename, index_col=0)
     return df
 
+def generate_baseplot_stats(folder): ## DOES NOT WORK YET
+    stats_file_loc = folder + "baseplotstats.csv"
+    if not exists(stats_file_loc):
+        stats = read_stats_file("Stats.json")
+        base_filenames = generate_base_set_filenames()
+        baseplot_stats = filter_filename_in_stats(stats, base_filenames)
+        print(baseplot_stats)
+        df = transform_to_dataframe(baseplot_stats)
+        df.to_csv(stats_file_loc)
+    else: 
+        df = pd.read_csv(stats_file_loc, index_col=0)
+    print(df)
+    return df
+
 def generate_questionnaire_stats(folder,testtype="questionnaire_data.csv"):
     stats_file_loc = folder+testtype[:-4] + "stats.csv"
     if not exists(stats_file_loc):
@@ -563,6 +601,7 @@ def generate_questionnaire_stats(folder,testtype="questionnaire_data.csv"):
         df.to_csv(stats_file_loc)
     else: 
         df = pd.read_csv(stats_file_loc, index_col=0)
+    print(df)
     return df
 
 def recompute_accuracy(row, folder='predictions/'):
@@ -613,7 +652,7 @@ def plot_longpasswords(modelname, title, model_type, folder="./longpasswordfiles
 def filter_models_for_barplot(row, filters):
     return row['modeltype'] not in filters
 
-def plot_questionnaire(file_to_plot= 'questionnaire_data.csv', folder="./questionnairefiles/", save_folder="./questionnaireGraphs"):
+def plot_questionnaire(file_to_plot= 'questionnaire_data.csv', folder="./questionnairefiles/", save_folder="./questionnaireGraphs", title="Questionnaire data"):
     df = generate_questionnaire_stats(folder, testtype=file_to_plot)
     df = df[df.apply(filter_models_for_barplot, args=(['PassGPTModel-1testretry', 'PassGPTModel-0testretry', 'PassGPTModel-0', 'LSTMModel-0',
                                                        'KNearestNeighborsModel-Bigram', 'KNearestNeighborsModel-BigramLevenshtein', 'KNearestNeighborsModel-Levenshtein', 'KNearestNeighborsminkowksiModel-Bigram'], ), axis=1)]
@@ -621,15 +660,17 @@ def plot_questionnaire(file_to_plot= 'questionnaire_data.csv', folder="./questio
     print(df)
     df.sort_values(by=['size', 'modeltype'], ascending=True, inplace=True)
 
-    scores = ['accuracy', 'recall', 'precision', 'f1score']
+    if file_to_plot == "Usernames_10000.csv": # For the usernames, there is not much use in the other scores, as they are all 'non-passwords'
+        scores = ['accuracy']
+    else: 
+        scores = ['accuracy', 'recall', 'precision', 'f1score', 'weightedfscore', 'weightedfscore5']
     for score in scores:
         sizes = df['size'].unique()
         fig, axs = plt.subplots(len(sizes), 1, figsize=(15,25), sharey=True, sharex=True)
         axs = axs.ravel()
-        plt.suptitle(f"Questionnaire data ({score})", fontsize=30, y=0.98)
+        plt.suptitle(f"{title} ({score})", fontsize=30, y=0.98)
         for i, size in enumerate(sizes):
-            df_size = df[df['size'] == size]
-            
+            df_size = df[df['size'] == size]            
             axs[i] = plt.subplot(len(sizes), 1, i+1)
             axs[i] = sns.barplot(df_size, x='modeltype', y=score)
             axs[i].set(title=size)
@@ -644,7 +685,7 @@ def plot_questionnaire(file_to_plot= 'questionnaire_data.csv', folder="./questio
 
 
 
-#get_top_hyperparameters("./gridsearchresults/", "RandomForest", model_type='all', topn=1)
+#get_top_hyperparameters("./gridsearchresults/", "RandomForest", model_type='all', topn=3)
 
 '''
 #summary = calc_averages('ValSetResults/NaiveBayes')
@@ -654,8 +695,8 @@ table = transform_data(results)
 plot_data(table, "Gaussian Naive Bayes")
 '''
 
-plot_diff_models(folder="ValSetResults/basemodels/", lang="100% English")
-#plot_feature_effects(lang="100% English")
+#plot_diff_models(folder="ValSetResults/basemodels/", lang="100% English")
+plot_feature_effects(lang="100% English")
 
 #plot_differences(folder="ValSetResults/all/")
 
@@ -696,11 +737,12 @@ for feature_model in feature_models:
         }
 
 
-model = 'AdaBoost-Bigram'
+#model = 'AdaBoost-Bigram'
 #plot_languagesdata_for_model(models[model]['file'], f"{models[model]['title']} on different languages", models[model]['type'])
-#plot_questionnaire(file_to_plot= 'Usernames_10000.csv', folder="./questionnairefiles/", save_folder="./questionnaireGraphs")
+#plot_questionnaire(file_to_plot='Usernames_10000.csv', folder="./questionnairefiles/", save_folder="./questionnaireGraphs", title="Usernames (10,000)")
+#plot_questionnaire(file_to_plot= 'questionnaire_data.csv', folder="./questionnairefiles/", save_folder="./questionnaireGraphs", title="Questionnaire data")
 #for model in models:
-#    plot_longpasswords(models[model]['file'], f"{models[model]['title']} on different languages", models[model]['type'])
+#    plot_longpasswords(models[model]['file'], f"{models[model]['title']} on longer passwords", models[model]['type'])
 
 #stats = read_stats_file("Stats.json")
 #print(stats['KNearestNeighborscosineModel-'])
@@ -711,4 +753,4 @@ model = 'AdaBoost-Bigram'
 #    plot_languagesdata_for_model(models[model]['file'], f"{models[model]['title']} on different languages", models[model]['type'])
 
 
-
+#generate_baseplot_stats("./baseplotfiles/")
