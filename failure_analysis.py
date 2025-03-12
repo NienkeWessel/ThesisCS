@@ -1,6 +1,6 @@
 import pandas as pd
 from math import isclose
-from utils import find_files_in_folder, split_column_title
+from utils import find_files_in_folder, split_column_title, read_in_csv
 from datasets import load_from_disk
 from DataTransformer import counts
 import json
@@ -28,19 +28,13 @@ def calc_f1score(df, label_column, pred_column):
     precision = calc_precision(df, label_column, pred_column)
     return 2 * (precision * recall) / (precision + recall)
 
-def read_in_csv(filename):
-    # Read the CSV file into a pandas DataFrame
-    df = pd.read_csv(filename)
-    print(df.head())
+def calc_weighted_fscore(df, label_column, pred_column, beta=2):
+    recall = calc_recall(df, label_column, pred_column)
+    precision = calc_precision(df, label_column, pred_column)
+    return (1 + beta*beta) * (precision * recall) / ( (beta*beta *precision) + recall)
 
-    # List the columns you want to convert to floats (excluding the column we want to exclude)
-    columns_to_convert = [col for col in df.columns if col != 'text']
 
-    # Convert selected columns to floats
-    df[columns_to_convert] = df[columns_to_convert].astype(float)
-    
-    print(df)
-    return df
+
 
 def calc_mean_length(df):
     return df['text'].apply(lambda x: len(x)).mean()
@@ -127,8 +121,25 @@ def calc_stats_for_file(df, stats, file):
 
     return stats
 
+def add_weighted_fscore_to_stats(df, stats, file):
+    models = df.columns[3:]
+    models = [split_column_title(model) for model in models if model[-1] != '0' or model[-1] != '0testretry']
 
-def calc_stats_for_all_files(folder, existing_stats_file=None):
+    for model in models:
+        
+        model_type = model[0] + "-" + model[3]
+        if model[1] == "":
+            model_name = model[0] + "_" + file[:-4]
+        else: 
+            model_name = model[1]
+        try: 
+            stats[model_type][model_name][file]['weightedfscore5'] = calc_weighted_fscore(df, 'label', "-".join(model), beta=5)
+        except: 
+            raise Exception("problems here")
+
+    return stats
+
+def calc_stats_for_all_files(folder, existing_stats_file=None, method='normal'):
     files = find_files_in_folder(folder)
     if existing_stats_file is not None:
         with open(existing_stats_file, 'r') as f:
@@ -138,7 +149,13 @@ def calc_stats_for_all_files(folder, existing_stats_file=None):
     for file in files:
         print(f"Running file {file}")
         df = read_in_csv(folder + file)
-        stats = calc_stats_for_file(df, stats, file)
+        if method == 'normal':
+            stats = calc_stats_for_file(df, stats, file)
+        elif method == 'weighted':
+            stats = add_weighted_fscore_to_stats(df, stats, file)
+        else:
+            print("Not a valid method, please choose either 'normal' or 'weighted'")
+            return
         with open("Stats.json", 'w') as f:
             json.dump(stats, f, indent=4)
     #print(stats)
@@ -206,9 +223,9 @@ comparison_pw = load_from_disk("comparison_pw")
 
 #language_files = ['most_common_Ar1.0_10000.csv', 'most_common_Du1.0_10000.csv', 'most_common_It1.0_10000.csv', 'most_common_Ru1.0_10000.csv', 'most_common_Tu1.0_10000.csv', 'most_common_Vi1.0_10000.csv']
 #for lang_file in language_files:
-#    filter_lang_file(f"./predictionsSepFiles/predictionsPassGPT/{lang_file}")
+#    filter_lang_file(f"./predictionsSepFiles/predictionsBigrams/{lang_file}")
 
 # ----- MAIN FUNCTION ------
-calc_stats_for_all_files("./predictionsSepFiles/predictionsPassGPT/", existing_stats_file="Stats.json")
+calc_stats_for_all_files("./predictionsSepFiles/predictionsBigrams/", existing_stats_file="Stats.json", method='weighted')
 
 #move_PassGPT_results()

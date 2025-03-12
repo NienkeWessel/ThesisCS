@@ -3,7 +3,7 @@ from torch import torch
 from tqdm import tqdm
 from glob import glob
 from d2l import torch as d2l
-
+import pandas as pd
 
 def get_device():
     # device = torch.device('cuda:0') if torch.cuda.is_available() else torch.device("cpu")
@@ -91,6 +91,20 @@ def split_column_title(title):
     :return: four-tuple with (model_type, complete model name, dataset tested on, tag)
     """
     return title.split("-")
+
+def read_in_csv(filename):
+    # Read the CSV file into a pandas DataFrame
+    df = pd.read_csv(filename)
+    print(df.head())
+
+    # List the columns you want to convert to floats (excluding the column we want to exclude)
+    columns_to_convert = [col for col in df.columns if col != 'text']
+
+    # Convert selected columns to floats
+    df[columns_to_convert] = df[columns_to_convert].astype(float)
+    
+    print(df)
+    return df
 
 
 lang_map = {
